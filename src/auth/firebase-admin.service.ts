@@ -6,12 +6,30 @@ import * as fs from 'fs';
 @Injectable()
 export class FirebaseAdminService implements OnModuleInit {
   onModuleInit() {
-    const envPath = process.env.FIREBASE_CREDENTIALS;
-    const serviceAccountPath = envPath ? envPath : path.resolve(process.cwd(), 'firebase-admin-key.json');
-    
-    if (fs.existsSync(serviceAccountPath)) {
+    const envVal = process.env.FIREBASE_CREDENTIALS;
+    let serviceAccount: any = null;
+
+    if (envVal && envVal.trim().startsWith('{')) {
+      // It's a raw JSON string
       try {
-        const serviceAccount = require(serviceAccountPath);
+        serviceAccount = JSON.parse(envVal);
+      } catch (e) {
+        console.error('Failed to parse FIREBASE_CREDENTIALS JSON from env', e);
+      }
+    } else {
+      // It's a file path (or default path)
+      const serviceAccountPath = envVal && fs.existsSync(envVal) ? envVal : path.resolve(process.cwd(), 'firebase-admin-key.json');
+      if (fs.existsSync(serviceAccountPath)) {
+        try {
+          serviceAccount = require(serviceAccountPath);
+        } catch (error) {
+          console.error('Failed to load Firebase Admin credential from file', error);
+        }
+      }
+    }
+
+    if (serviceAccount) {
+      try {
         if (!admin.apps.length) {
           admin.initializeApp({
             credential: admin.credential.cert(serviceAccount),
@@ -19,10 +37,10 @@ export class FirebaseAdminService implements OnModuleInit {
         }
         console.log('Firebase Admin initialized successfully.');
       } catch (error) {
-        console.error('Failed to initialize Firebase Admin with serviceAccountKey.json', error);
+        console.error('Failed to initialize Firebase Admin with credential', error);
       }
     } else {
-      console.warn('⚠️ Firebase Admin `serviceAccountKey.json` NOT FOUND. Firebase Auth will fail.');
+      console.warn('⚠️ Firebase Admin credential NOT FOUND. Firebase Auth will fail.');
     }
   }
 
