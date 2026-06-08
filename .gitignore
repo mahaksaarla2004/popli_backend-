@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+.DS_Store
+firebase-admin-key.json
+firebase-admin-key.json.json
+npm-debug.log
+yarn-error.log
+.idea/
+.vscode/

@@ -1,0 +1,449 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id                 String            @id @default(uuid())
+  phone              String?           @unique
+  email              String?           @unique
+  passwordHash       String?
+  name               String
+  username           String            @unique
+  avatar             String?
+  bio                String?
+  category           String?
+  city               String?
+  latitude           Float?
+  longitude          Float?
+  isVerified         Boolean           @default(false)
+  role               Role              @default(USER)
+  followersCount     Int               @default(0)
+  followingCount     Int               @default(0)
+  totalLikesReceived Int               @default(0)
+  giftsReceivedCount Int               @default(0)
+  createdAt          DateTime          @default(now())
+  updatedAt          DateTime          @updatedAt
+  dob                DateTime?
+  gender             String?
+  isBlocked          Boolean           @default(false)
+  isProfileComplete  Boolean           @default(false)
+  chatParticipations ChatParticipant[]
+  comments           Comment[]
+  following          Follows[]         @relation("UserFollowing")
+  followers          Follows[]         @relation("UserFollowers")
+  kycRecord          KYCRecord?
+  likes              Like[]
+  commentLikes       CommentLike[]
+  messagesSent       Message[]
+  notifications      Notification[]    @relation("UserNotifications")
+  reels              Reel[]            @relation("CreatorReels")
+  reportsSubmitted   Report[]          @relation("ReporterReports")
+  saves              Save[]
+  sessions           Session[]
+  shares             Share[]
+  stories            Story[]           @relation("CreatorStories")
+  archivedStories    StoryArchive[]    @relation("CreatorArchives")
+  storyHighlights    StoryHighlight[]  @relation("CreatorHighlights")
+  storyReactions     StoryReaction[]
+  storyViews         StoryViewer[]
+  ticketsSubmitted   SupportTicket[]   @relation("TicketCreator")
+  preferences        UserPreference?
+  wallet             Wallet?
+  interests          Interest[]        @relation("InterestToUser")
+  watchHistory       WatchHistory[]
+  blocking           Block[]           @relation("Blocker")
+  blockedBy          Block[]           @relation("Blocked")
+}
+
+model Session {
+  id           String   @id @default(uuid())
+  userId       String
+  refreshToken String   @unique
+  deviceInfo   String?
+  ipAddress    String?
+  expiresAt    DateTime
+  createdAt    DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model UserPreference {
+  id                   String   @id @default(uuid())
+  userId               String   @unique
+  theme                String   @default("dark")
+  language             String   @default("English")
+  notificationsEnabled Boolean  @default(true)
+  isPrivateProfile     Boolean  @default(false)
+  closeFriendsIds      String[] @default([])
+  user                 User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model KYCRecord {
+  id               String    @id @default(uuid())
+  userId           String    @unique
+  fullName         String
+  dob              String
+  address          String?
+  panNumber        String?
+  aadharNumber     String?
+  upiId            String?
+  bankAccount      String?
+  ifscCode         String?
+  accountType      String    @default("Savings")
+  status           KycStatus @default(PENDING)
+  isPanVerified    Boolean   @default(false)
+  isAadharVerified Boolean   @default(false)
+  isUpiLinked      Boolean   @default(false)
+  isBankLinked     Boolean   @default(false)
+  submittedAt      DateTime  @default(now())
+  reviewedAt       DateTime?
+  rejectionReason  String?
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Follows {
+  followerId  String
+  followingId String
+  createdAt   DateTime @default(now())
+  follower    User     @relation("UserFollowing", fields: [followerId], references: [id], onDelete: Cascade)
+  following   User     @relation("UserFollowers", fields: [followingId], references: [id], onDelete: Cascade)
+
+  @@id([followerId, followingId])
+}
+
+model Reel {
+  id            String    @id @default(uuid())
+  creatorId     String
+  mediaUrl      String
+  thumbnailUrl  String
+  mediaType     MediaType @default(VIDEO)
+  description   String?
+  musicName     String?
+  category      String?
+  viewsCount    Int       @default(0)
+  likesCount    Int       @default(0)
+  commentsCount Int       @default(0)
+  sharesCount   Int       @default(0)
+  savesCount    Int       @default(0)
+  latitude      Float?
+  longitude     Float?
+  city          String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  layersData    Json?
+  comments      Comment[]
+  likes         Like[]
+  creator       User      @relation("CreatorReels", fields: [creatorId], references: [id], onDelete: Cascade)
+  reports       Report[]  @relation("ReportedReel")
+  saves         Save[]
+  shares        Share[]
+  watchHistory  WatchHistory[]
+}
+
+model Comment {
+  id         String        @id @default(uuid())
+  reelId     String
+  userId     String
+  text       String
+  likesCount Int           @default(0)
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  parentId   String?
+  parent     Comment?      @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies    Comment[]     @relation("CommentReplies")
+  reel       Reel          @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  likes      CommentLike[]
+}
+
+model CommentLike {
+  id         String   @id @default(uuid())
+  commentId  String
+  userId     String
+  createdAt  DateTime @default(now())
+  comment    Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+}
+
+model Like {
+  id        String   @id @default(uuid())
+  reelId    String
+  userId    String
+  createdAt DateTime @default(now())
+  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reelId, userId])
+}
+
+model Save {
+  id        String   @id @default(uuid())
+  reelId    String
+  userId    String
+  createdAt DateTime @default(now())
+  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([reelId, userId])
+}
+
+model Share {
+  id        String   @id @default(uuid())
+  reelId    String
+  userId    String
+  platform  String?
+  createdAt DateTime @default(now())
+  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Story {
+  id             String          @id @default(uuid())
+  creatorId      String
+  mediaUrl       String
+  mediaType      MediaType
+  isCloseFriends Boolean         @default(false)
+  repliesAllowed Boolean         @default(true)
+  expiresAt      DateTime
+  createdAt      DateTime        @default(now())
+  layersData     Json?
+  creator        User            @relation("CreatorStories", fields: [creatorId], references: [id], onDelete: Cascade)
+  reactions      StoryReaction[]
+  viewers        StoryViewer[]
+}
+
+model StoryViewer {
+  id       String   @id @default(uuid())
+  storyId  String
+  userId   String
+  viewedAt DateTime @default(now())
+  story    Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user     User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, userId])
+}
+
+model StoryReaction {
+  id        String   @id @default(uuid())
+  storyId   String
+  userId    String
+  emoji     String
+  createdAt DateTime @default(now())
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model StoryArchive {
+  id         String    @id @default(uuid())
+  creatorId  String
+  mediaUrl   String
+  mediaType  MediaType
+  createdAt  DateTime
+  archivedAt DateTime  @default(now())
+  creator    User      @relation("CreatorArchives", fields: [creatorId], references: [id], onDelete: Cascade)
+}
+
+model StoryHighlight {
+  id        String   @id @default(uuid())
+  creatorId String
+  title     String
+  coverUrl  String
+  storyIds  String[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  creator   User     @relation("CreatorHighlights", fields: [creatorId], references: [id], onDelete: Cascade)
+}
+
+model Chat {
+  id            String            @id @default(uuid())
+  isGroup       Boolean           @default(false)
+  lastMessage   String?
+  lastMessageAt DateTime?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  participants  ChatParticipant[]
+  messages      Message[]
+}
+
+model ChatParticipant {
+  id          String   @id @default(uuid())
+  chatId      String
+  userId      String
+  unreadCount Int      @default(0)
+  joinedAt    DateTime @default(now())
+  chat        Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([chatId, userId])
+}
+
+model Message {
+  id        String   @id @default(uuid())
+  chatId    String
+  senderId  String
+  text      String?
+  mediaUrl  String?
+  status    String   @default("sent")
+  createdAt DateTime @default(now())
+  chat      Chat     @relation(fields: [chatId], references: [id], onDelete: Cascade)
+  sender    User     @relation(fields: [senderId], references: [id], onDelete: Cascade)
+}
+
+model Wallet {
+  id           String        @id @default(uuid())
+  userId       String        @unique
+  coinBalance  Int           @default(0)
+  inrEarnings  Float         @default(0.0)
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime      @updatedAt
+  transactions Transaction[]
+  user         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Transaction {
+  id          String            @id @default(uuid())
+  walletId    String
+  type        TransactionType
+  amount      Float
+  currency    Currency
+  description String?
+  status      TransactionStatus @default(PENDING)
+  referenceId String?
+  createdAt   DateTime          @default(now())
+  wallet      Wallet            @relation(fields: [walletId], references: [id], onDelete: Cascade)
+}
+
+model Gift {
+  id            String   @id @default(uuid())
+  name          String
+  costInCoins   Int
+  iconUrl       String
+  animationType String   @default("fly")
+  createdAt     DateTime @default(now())
+}
+
+model Notification {
+  id           String   @id @default(uuid())
+  userId       String
+  type         String
+  title        String
+  body         String
+  senderId     String?
+  senderAvatar String?
+  isRead       Boolean  @default(false)
+  metaData     Json?
+  createdAt    DateTime @default(now())
+  user         User     @relation("UserNotifications", fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Report {
+  id         String       @id @default(uuid())
+  reporterId String
+  reelId     String?
+  reason     String
+  status     ReportStatus @default(PENDING)
+  createdAt  DateTime     @default(now())
+  resolvedAt DateTime?
+  reel       Reel?        @relation("ReportedReel", fields: [reelId], references: [id])
+  reporter   User         @relation("ReporterReports", fields: [reporterId], references: [id], onDelete: Cascade)
+}
+
+model SupportTicket {
+  id          String       @id @default(uuid())
+  creatorId   String
+  subject     String
+  description String
+  status      TicketStatus @default(OPEN)
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+  creator     User         @relation("TicketCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+}
+
+model Interest {
+  id       String  @id @default(uuid())
+  name     String  @unique
+  icon     String?
+  isActive Boolean @default(true)
+  users    User[]  @relation("InterestToUser")
+}
+
+enum Role {
+  USER
+  CREATOR
+  MODERATOR
+  ADMIN
+}
+
+enum MediaType {
+  PHOTO
+  VIDEO
+}
+
+enum TransactionType {
+  GIFT_SEND
+  GIFT_RECEIVE
+  COIN_RECHARGE
+  WITHDRAWAL
+  AD_REVENUE
+}
+
+enum TransactionStatus {
+  PENDING
+  SUCCESS
+  FAILED
+}
+
+enum Currency {
+  COINS
+  INR
+}
+
+enum KycStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  NOT_SUBMITTED
+}
+
+enum ReportStatus {
+  PENDING
+  REVIEWED
+  RESOLVED
+  DISMISSED
+}
+
+enum TicketStatus {
+  OPEN
+  IN_PROGRESS
+  RESOLVED
+  CLOSED
+}
+
+model WatchHistory {
+  id        String   @id @default(uuid())
+  userId    String
+  reelId    String
+  watchedAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reelId])
+}
+
+model Block {
+  id        String   @id @default(uuid())
+  blockerId String
+  blockedId String
+  createdAt DateTime @default(now())
+  blocker   User     @relation("Blocker", fields: [blockerId], references: [id], onDelete: Cascade)
+  blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
+
+  @@unique([blockerId, blockedId])
+}
+

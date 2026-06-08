@@ -1,0 +1,73 @@
+import { Controller, Get, Post, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { StoriesService } from './stories.service';
+import { CreateStoryDto, ReactStoryDto, CreateHighlightDto } from './dto/stories.dto';
+
+@ApiTags('stories')
+@Controller('stories')
+export class StoriesController {
+  constructor(private readonly storiesService: StoriesService) {}
+
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a new story' })
+  createStory(@Req() req: any, @Body() dto: CreateStoryDto) {
+    return this.storiesService.createStory(req.user.id, dto);
+  }
+
+  @Get()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get active stories for feed' })
+  getActiveStories(@Req() req: any) {
+    return this.storiesService.getActiveStories(req.user.id);
+  }
+
+  @Post(':id/view')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Mark story as viewed' })
+  markViewed(@Param('id') storyId: string, @Req() req: any) {
+    return this.storiesService.markViewed(storyId, req.user.id);
+  }
+
+  @Post(':id/react')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'React to a story' })
+  reactToStory(@Param('id') storyId: string, @Req() req: any, @Body() dto: ReactStoryDto) {
+    return this.storiesService.reactToStory(storyId, req.user.id, dto);
+  }
+
+  @Get('archive')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get archived stories' })
+  getArchivedStories(@Req() req: any) {
+    return this.storiesService.getArchivedStories(req.user.id);
+  }
+
+  @Post('highlights')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a new story highlight' })
+  createHighlight(@Req() req: any, @Body() dto: CreateHighlightDto) {
+    return this.storiesService.createHighlight(req.user.id, dto);
+  }
+
+  @Get('highlights/:creatorId')
+  @ApiOperation({ summary: 'Get creator highlights' })
+  getHighlights(@Param('creatorId') creatorId: string) {
+    return this.storiesService.getHighlights(creatorId);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete a story' })
+  deleteStory(@Param('id') storyId: string, @Req() req: any) {
+    return this.storiesService.deleteStory(storyId, req.user.id);
+  }
+}

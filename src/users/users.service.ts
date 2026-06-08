@@ -1,0 +1,133 @@
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { PrismaService } from '../prisma/prisma.service';
+import { UpdateProfileDto, UpdatePreferencesDto } from './dto/users.dto';
+
+@Injectable()
+export class UsersService {
+  constructor(private prisma: PrismaService) {}
+
+  async getProfile(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      include: {
+        preferences: true,
+        wallet: true,
+        interests: true,
+      }
+    });
+    
+    if (!user) throw new NotFoundException('User not found');
+    return user;
+  }
+
+  async updateProfile(userId: string, dto: UpdateProfileDto) {
+    // Validate DOB 13+
+    if (dto.dob) {
+      const dobDate = new Date(dto.dob);
+      const age = (Date.now() - dobDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+      if (age < 13) {
+        throw new BadRequestException('You must be at least 13 years old to create an account.');
+      }
+    }
+
+    // Uniqueness checks
+    if (dto.username) {
+      const existing = await this.prisma.user.findFirst({ where: { username: dto.username, id: { not: userId } } });
+      if (existing) throw new BadRequestException('Username is already taken');
+    }
+
+    const { interestIds, interestNames, dob, ...restDto } = dto;
+
+    const data: any = { ...restDto };
+    
+    if (dob) {
+      data.dob = new Date(dob);
+    }
+
+    // if interestIds provided, connect them
+    if (interestIds) {
+      data.interests = {
+        set: interestIds.map(id => ({ id }))
+      };
+    }
+
+    // if interestNames provided, connect or create them
+    if (interestNames) {
+      data.interests = {
+        connectOrCreate: interestNames.map(name => ({
+          where: { name },
+          create: { name }
+        }))
+      };
+    }
+
+    // update the DB
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data,
+      include: { interests: true }
+    });
+
+    // Check completion criteria
+    if (!updatedUser.isProfileComplete) {
+      // Must have name, username, dob, and at least 1 interest
+      if (
+        updatedUser.name && updatedUser.name !== 'Popli User' && 
+        updatedUser.username && !updatedUser.username.startsWith('user_') && 
+        updatedUser.dob && 
+        updatedUser.interests.length > 0
+      ) {
+        return this.prisma.user.update({
+          where: { id: userId },
+          data: { isProfileComplete: true },
+          include: { interests: true }
+        });
+      }
+    }
+
+    return updatedUser;
+  }
+
+  async updatePreferences(userId: string, dto: UpdatePreferencesDto) {
+    return this.prisma.userPreference.update({
+      where: { userId },
+      data: dto,
+    });
+  }
+
+  async getCreatorProfile(username: string) {
+    const creator = await this.prisma.user.findUnique({
+      where: { username },
+      include: {
+        reels: {
+          take: 10,
+          orderBy: { createdAt: 'desc' }
+        }
+      }
+    });
+
+    if (!creator) throw new NotFoundException('Creator not found');
+    return creator;
+  }
+
+  async getCreators() {
+    return this.prisma.user.findMany({
+      where: {
+        reels: { some: {} } // Users who have at least one reel
+      },
+      orderBy: { followersCount: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        avatar: true,
+        bio: true,
+        city: true,
+        category: true,
+        followersCount: true,
+        isVerified: true
+      }
+    });
+  }
+}
