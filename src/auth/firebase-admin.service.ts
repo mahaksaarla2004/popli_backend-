@@ -6,7 +6,8 @@ import * as fs from 'fs';
 @Injectable()
 export class FirebaseAdminService implements OnModuleInit {
   onModuleInit() {
-    const serviceAccountPath = path.resolve(process.cwd(), 'firebase-admin-key.json');
+    const envPath = process.env.FIREBASE_CREDENTIALS;
+    const serviceAccountPath = envPath ? envPath : path.resolve(process.cwd(), 'firebase-admin-key.json');
     
     if (fs.existsSync(serviceAccountPath)) {
       try {
