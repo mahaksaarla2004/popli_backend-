@@ -231,7 +231,7 @@ export class AuthService {
     const payload = { sub: userId };
     const accessToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET,
-      expiresIn: '15m',
+      expiresIn: '7d',
     });
     const refreshToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_REFRESH_SECRET,
@@ -275,7 +275,7 @@ export class AuthService {
     const payload = { sub: session.userId };
     const newAccessToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET,
-      expiresIn: '15m',
+      expiresIn: '7d',
     });
 
     return { accessToken: newAccessToken };
