@@ -12,8 +12,12 @@ export class GiftsService {
 
   async sendGift(senderId: string, dto: SendGiftDto) {
     return this.prisma.$transaction(async (tx) => {
-      const senderWallet = await tx.wallet.findUnique({ where: { userId: senderId } });
-      const receiverWallet = await tx.wallet.findUnique({ where: { userId: dto.receiverId } });
+      const senderWallet = await tx.wallet.findUnique({
+        where: { userId: senderId },
+      });
+      const receiverWallet = await tx.wallet.findUnique({
+        where: { userId: dto.receiverId },
+      });
 
       if (!senderWallet || !receiverWallet) {
         throw new BadRequestException('Wallet not found');
@@ -26,7 +30,7 @@ export class GiftsService {
       // Deduct coins from sender
       await tx.wallet.update({
         where: { id: senderWallet.id },
-        data: { coinBalance: { decrement: dto.cost } }
+        data: { coinBalance: { decrement: dto.cost } },
       });
 
       await tx.transaction.create({
@@ -37,15 +41,15 @@ export class GiftsService {
           currency: 'COINS',
           status: 'SUCCESS',
           description: dto.message || 'Sent a gift',
-        }
+        },
       });
 
       // Add INR to receiver (Conversion Rate: 1 Coin = 0.50 INR)
-      const convertedEarnings = dto.cost * 0.50;
+      const convertedEarnings = dto.cost * 0.5;
 
       await tx.wallet.update({
         where: { id: receiverWallet.id },
-        data: { inrEarnings: { increment: convertedEarnings } }
+        data: { inrEarnings: { increment: convertedEarnings } },
       });
 
       await tx.transaction.create({
@@ -56,12 +60,12 @@ export class GiftsService {
           currency: 'INR',
           status: 'SUCCESS',
           description: 'Received a gift',
-        }
+        },
       });
 
       await tx.user.update({
         where: { id: dto.receiverId },
-        data: { giftsReceivedCount: { increment: 1 } }
+        data: { giftsReceivedCount: { increment: 1 } },
       });
 
       return { message: 'Gift sent successfully' };

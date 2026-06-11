@@ -7,25 +7,41 @@ export class SocialService {
 
   async toggleFollow(followerId: string, followingId: string) {
     if (followerId === followingId) {
-      throw new Error("Cannot follow yourself");
+      throw new Error('Cannot follow yourself');
     }
-    
+
     const existingFollow = await this.prisma.follows.findUnique({
-      where: { followerId_followingId: { followerId, followingId } }
+      where: { followerId_followingId: { followerId, followingId } },
     });
 
     if (existingFollow) {
-      await this.prisma.follows.delete({ where: { followerId_followingId: { followerId, followingId } } });
-      await this.prisma.user.update({ where: { id: followerId }, data: { followingCount: { decrement: 1 } } });
-      await this.prisma.user.update({ where: { id: followingId }, data: { followersCount: { decrement: 1 } } });
+      await this.prisma.follows.delete({
+        where: { followerId_followingId: { followerId, followingId } },
+      });
+      await this.prisma.user.update({
+        where: { id: followerId },
+        data: { followingCount: { decrement: 1 } },
+      });
+      await this.prisma.user.update({
+        where: { id: followingId },
+        data: { followersCount: { decrement: 1 } },
+      });
       return { following: false };
     } else {
       await this.prisma.follows.create({ data: { followerId, followingId } });
-      await this.prisma.user.update({ where: { id: followerId }, data: { followingCount: { increment: 1 } } });
-      const followingUser = await this.prisma.user.update({ where: { id: followingId }, data: { followersCount: { increment: 1 } } });
-      
-      const follower = await this.prisma.user.findUnique({ where: { id: followerId } });
-      
+      await this.prisma.user.update({
+        where: { id: followerId },
+        data: { followingCount: { increment: 1 } },
+      });
+      const followingUser = await this.prisma.user.update({
+        where: { id: followingId },
+        data: { followersCount: { increment: 1 } },
+      });
+
+      const follower = await this.prisma.user.findUnique({
+        where: { id: followerId },
+      });
+
       if (follower) {
         await this.prisma.notification.create({
           data: {
@@ -35,10 +51,10 @@ export class SocialService {
             body: `${follower.name} started following you.`,
             senderId: followerId,
             senderAvatar: follower.avatar || 'https://i.pravatar.cc/150',
-          }
+          },
         });
       }
-      
+
       return { following: true };
     }
   }
@@ -46,24 +62,32 @@ export class SocialService {
   async getFollowers(userId: string) {
     return this.prisma.follows.findMany({
       where: { followingId: userId },
-      include: { follower: { select: { id: true, username: true, name: true, avatar: true } } }
+      include: {
+        follower: {
+          select: { id: true, username: true, name: true, avatar: true },
+        },
+      },
     });
   }
 
   async getFollowing(userId: string) {
     return this.prisma.follows.findMany({
       where: { followerId: userId },
-      include: { following: { select: { id: true, username: true, name: true, avatar: true } } }
+      include: {
+        following: {
+          select: { id: true, username: true, name: true, avatar: true },
+        },
+      },
     });
   }
 
   async toggleBlock(blockerId: string, blockedId: string) {
     if (blockerId === blockedId) {
-      throw new Error("Cannot block yourself");
+      throw new Error('Cannot block yourself');
     }
 
     const existingBlock = await this.prisma.block.findUnique({
-      where: { blockerId_blockedId: { blockerId, blockedId } }
+      where: { blockerId_blockedId: { blockerId, blockedId } },
     });
 
     if (existingBlock) {
@@ -75,9 +99,9 @@ export class SocialService {
         where: {
           OR: [
             { followerId: blockerId, followingId: blockedId },
-            { followerId: blockedId, followingId: blockerId }
-          ]
-        }
+            { followerId: blockedId, followingId: blockerId },
+          ],
+        },
       });
       await this.prisma.block.create({ data: { blockerId, blockedId } });
       return { blocked: true };
@@ -87,8 +111,12 @@ export class SocialService {
   async getBlockedUsers(userId: string) {
     const blocks = await this.prisma.block.findMany({
       where: { blockerId: userId },
-      include: { blocked: { select: { id: true, username: true, name: true, avatar: true } } }
+      include: {
+        blocked: {
+          select: { id: true, username: true, name: true, avatar: true },
+        },
+      },
     });
-    return blocks.map(b => b.blocked);
+    return blocks.map((b) => b.blocked);
   }
 }

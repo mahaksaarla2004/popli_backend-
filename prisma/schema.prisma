@@ -58,6 +58,7 @@ model User {
   watchHistory       WatchHistory[]
   blocking           Block[]           @relation("Blocker")
   blockedBy          Block[]           @relation("Blocked")
+  taggedInReels      Reel[]            @relation("ReelTaggedUsers")
 }
 
 model Session {
@@ -116,32 +117,34 @@ model Follows {
 }
 
 model Reel {
-  id            String    @id @default(uuid())
-  creatorId     String
-  mediaUrl      String
-  thumbnailUrl  String
-  mediaType     MediaType @default(VIDEO)
-  description   String?
-  musicName     String?
-  category      String?
-  viewsCount    Int       @default(0)
-  likesCount    Int       @default(0)
-  commentsCount Int       @default(0)
-  sharesCount   Int       @default(0)
-  savesCount    Int       @default(0)
-  latitude      Float?
-  longitude     Float?
-  city          String?
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
-  layersData    Json?
-  comments      Comment[]
-  likes         Like[]
-  creator       User      @relation("CreatorReels", fields: [creatorId], references: [id], onDelete: Cascade)
-  reports       Report[]  @relation("ReportedReel")
-  saves         Save[]
-  shares        Share[]
-  watchHistory  WatchHistory[]
+  id                   String         @id @default(uuid())
+  creatorId            String
+  mediaUrl             String
+  thumbnailUrl         String
+  mediaType            MediaType      @default(VIDEO)
+  description          String?
+  musicName            String?
+  category             String?
+  viewsCount           Int            @default(0)
+  likesCount           Int            @default(0)
+  commentsCount        Int            @default(0)
+  sharesCount          Int            @default(0)
+  savesCount           Int            @default(0)
+  pendingEarningsViews Int            @default(0)
+  latitude             Float?
+  longitude            Float?
+  city                 String?
+  createdAt            DateTime       @default(now())
+  updatedAt            DateTime       @updatedAt
+  layersData           Json?
+  comments             Comment[]
+  likes                Like[]
+  taggedUsers          User[]         @relation("ReelTaggedUsers")
+  creator              User           @relation("CreatorReels", fields: [creatorId], references: [id], onDelete: Cascade)
+  reports              Report[]       @relation("ReportedReel")
+  saves                Save[]
+  shares               Share[]
+  watchHistory         WatchHistory[]
 }
 
 model Comment {
@@ -161,12 +164,12 @@ model Comment {
 }
 
 model CommentLike {
-  id         String   @id @default(uuid())
-  commentId  String
-  userId     String
-  createdAt  DateTime @default(now())
-  comment    Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  commentId String
+  userId    String
+  createdAt DateTime @default(now())
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([commentId, userId])
 }
@@ -446,4 +449,3 @@ model Block {
 
   @@unique([blockerId, blockedId])
 }
-

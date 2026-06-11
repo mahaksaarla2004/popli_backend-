@@ -1,4 +1,13 @@
-import { Controller, Get, Put, Body, Param, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Put,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+  Query,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { UsersService } from './users.service';
@@ -31,6 +40,12 @@ export class UsersController {
   @ApiOperation({ summary: 'Update user preferences' })
   updatePreferences(@Req() req: any, @Body() dto: UpdatePreferencesDto) {
     return this.usersService.updatePreferences(req.user.id, dto);
+  }
+
+  @Get('search')
+  @ApiOperation({ summary: 'Search users by username or name' })
+  searchUsers(@Query('q') query: string) {
+    return this.usersService.searchUsers(query);
   }
 
   @Get('creators')

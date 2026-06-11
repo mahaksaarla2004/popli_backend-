@@ -11,10 +11,16 @@ export class SearchService {
         OR: [
           { username: { contains: query, mode: 'insensitive' } },
           { name: { contains: query, mode: 'insensitive' } },
-        ]
+        ],
       },
       take: 10,
-      select: { id: true, username: true, name: true, avatar: true, isVerified: true }
+      select: {
+        id: true,
+        username: true,
+        name: true,
+        avatar: true,
+        isVerified: true,
+      },
     });
 
     const reels = await this.prisma.reel.findMany({
@@ -22,10 +28,12 @@ export class SearchService {
         OR: [
           { description: { contains: query, mode: 'insensitive' } },
           { category: { contains: query, mode: 'insensitive' } },
-        ]
+        ],
       },
       take: 10,
-      include: { creator: { select: { id: true, username: true, avatar: true } } }
+      include: {
+        creator: { select: { id: true, username: true, avatar: true } },
+      },
     });
 
     return { users, reels };

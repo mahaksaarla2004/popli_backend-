@@ -1,8 +1,21 @@
-import { Controller, Get, Post, Delete, Body, Param, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { StoriesService } from './stories.service';
-import { CreateStoryDto, ReactStoryDto, CreateHighlightDto } from './dto/stories.dto';
+import {
+  CreateStoryDto,
+  ReactStoryDto,
+  CreateHighlightDto,
+} from './dto/stories.dto';
 
 @ApiTags('stories')
 @Controller('stories')
@@ -37,7 +50,11 @@ export class StoriesController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'React to a story' })
-  reactToStory(@Param('id') storyId: string, @Req() req: any, @Body() dto: ReactStoryDto) {
+  reactToStory(
+    @Param('id') storyId: string,
+    @Req() req: any,
+    @Body() dto: ReactStoryDto,
+  ) {
     return this.storiesService.reactToStory(storyId, req.user.id, dto);
   }
 
@@ -61,6 +78,12 @@ export class StoriesController {
   @ApiOperation({ summary: 'Get creator highlights' })
   getHighlights(@Param('creatorId') creatorId: string) {
     return this.storiesService.getHighlights(creatorId);
+  }
+
+  @Get('highlights/view/:id')
+  @ApiOperation({ summary: 'Get stories inside a highlight' })
+  getHighlightStories(@Param('id') id: string) {
+    return this.storiesService.getHighlightStories(id);
   }
 
   @Delete(':id')

@@ -8,7 +8,7 @@ import { AdminController } from './admin.controller';
     JwtModule.register({
       secret: process.env.JWT_SECRET || 'fallback_secret',
       signOptions: { expiresIn: '1d' },
-    })
+    }),
   ],
   controllers: [AdminController],
   providers: [AdminService],

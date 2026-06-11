@@ -54,4 +54,9 @@ export class VerifyFirebaseTokenDto {
   @IsString()
   @IsNotEmpty()
   idToken: string;
+
+  @ApiProperty({ example: 'device-12345', required: false })
+  @IsOptional()
+  @IsString()
+  deviceId?: string;
 }

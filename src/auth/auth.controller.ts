@@ -1,7 +1,20 @@
-import { Controller, Post, Body, Req, HttpCode, HttpStatus } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  Req,
+  HttpCode,
+  HttpStatus,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
-import { SendOtpDto, VerifyOtpDto, RefreshTokenDto, CheckUserDto, VerifyFirebaseTokenDto } from './dto/auth.dto';
+import {
+  SendOtpDto,
+  VerifyOtpDto,
+  RefreshTokenDto,
+  CheckUserDto,
+  VerifyFirebaseTokenDto,
+} from './dto/auth.dto';
 
 @ApiTags('auth')
 @Controller('auth')

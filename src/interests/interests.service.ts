@@ -11,8 +11,8 @@ export class InterestsService {
       select: {
         id: true,
         name: true,
-        icon: true
-      }
+        icon: true,
+      },
     });
   }
 }

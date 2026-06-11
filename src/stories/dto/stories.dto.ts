@@ -1,4 +1,11 @@
-import { IsString, IsNotEmpty, IsBoolean, IsEnum, IsOptional, IsArray } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsBoolean,
+  IsEnum,
+  IsOptional,
+  IsArray,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum MediaType {

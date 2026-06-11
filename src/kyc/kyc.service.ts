@@ -14,8 +14,8 @@ export class KycService {
           userId,
           fullName: '',
           dob: '',
-          status: 'NOT_SUBMITTED'
-        }
+          status: 'NOT_SUBMITTED',
+        },
       });
     }
     return kyc;
@@ -38,8 +38,8 @@ export class KycService {
       create: {
         userId,
         ...dto,
-        status: 'PENDING'
-      }
+        status: 'PENDING',
+      },
     });
   }
 }

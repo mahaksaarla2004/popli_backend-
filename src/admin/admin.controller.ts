@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Param, UseGuards, Req, Body } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Param,
+  UseGuards,
+  Req,
+  Body,
+  Delete,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AdminService } from './admin.service';
@@ -92,5 +101,47 @@ export class AdminController {
   @ApiOperation({ summary: 'Get all support tickets' })
   getTickets(@Req() req: any) {
     return this.adminService.getTickets(req.user.id);
+  }
+
+  // Transactions
+  @Post('transactions/:id/approve')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Approve a withdrawal transaction' })
+  approveTransaction(@Param('id') txId: string, @Req() req: any) {
+    return this.adminService.approveTransaction(txId, req.user.id);
+  }
+
+  @Post('transactions/:id/reject')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reject a withdrawal transaction' })
+  rejectTransaction(@Param('id') txId: string, @Req() req: any) {
+    return this.adminService.rejectTransaction(txId, req.user.id);
+  }
+
+  // Gifts
+  @Get('gifts')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all premium gifts' })
+  getGifts() {
+    return this.adminService.getGifts();
+  }
+
+  @Post('gifts')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create a new premium gift' })
+  addGift(@Body() body: any, @Req() req: any) {
+    return this.adminService.addGift(body, req.user.id);
+  }
+
+  @Delete('gifts/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete a premium gift' })
+  deleteGift(@Param('id') giftId: string, @Req() req: any) {
+    return this.adminService.deleteGift(giftId, req.user.id);
   }
 }

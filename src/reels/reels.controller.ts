@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Req, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+  Query,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ReelsService } from './reels.service';
@@ -19,8 +28,16 @@ export class ReelsController {
 
   @Get('feed')
   @ApiOperation({ summary: 'Get global feed' })
-  getFeed(@Query('page') page: string, @Query('limit') limit: string, @Query('category') category: string) {
-    return this.reelsService.getFeed(Number(page) || 1, Number(limit) || 10, category);
+  getFeed(
+    @Query('page') page: string,
+    @Query('limit') limit: string,
+    @Query('category') category: string,
+  ) {
+    return this.reelsService.getFeed(
+      Number(page) || 1,
+      Number(limit) || 10,
+      category,
+    );
   }
 
   @Post(':id/like')
@@ -43,7 +60,11 @@ export class ReelsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Add a comment to a reel' })
-  addComment(@Param('id') reelId: string, @Req() req: any, @Body() dto: AddCommentDto) {
+  addComment(
+    @Param('id') reelId: string,
+    @Req() req: any,
+    @Body() dto: AddCommentDto,
+  ) {
     return this.reelsService.addComment(reelId, req.user.id, dto);
   }
 

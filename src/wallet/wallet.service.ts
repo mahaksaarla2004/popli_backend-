@@ -1,17 +1,89 @@
-import { Injectable, BadRequestException } from '@nestjs/common';
+import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { RechargeDto, WithdrawDto } from './dto/wallet.dto';
 
 @Injectable()
 export class WalletService {
+  private readonly logger = new Logger(WalletService.name);
+
   constructor(private prisma: PrismaService) {}
+
+  @Cron(CronExpression.EVERY_HOUR)
+  async calculateHourlyEarnings() {
+    this.logger.log('Running hourly earnings calculation...');
+
+    // 1. Get all reels with pending earnings views
+    const reels = await this.prisma.reel.findMany({
+      where: { pendingEarningsViews: { gt: 0 } },
+      select: { id: true, creatorId: true, pendingEarningsViews: true },
+    });
+
+    if (reels.length === 0) {
+      this.logger.log('No pending views to process.');
+      return;
+    }
+
+    // 2. Process each reel
+    for (const reel of reels) {
+      try {
+        await this.prisma.$transaction(async (tx) => {
+          // Gross = Views * 5 / 1000
+          const grossEarnings = (reel.pendingEarningsViews * 5) / 1000;
+
+          // Net = Gross * 0.88 (10% TDS + 2% Platform Fee deducted)
+          const netEarnings = grossEarnings * 0.88;
+
+          if (netEarnings > 0) {
+            // Add earnings to user's wallet
+            await tx.wallet.update({
+              where: { userId: reel.creatorId },
+              data: { inrEarnings: { increment: netEarnings } },
+            });
+
+            // Log transaction (Optional, but good for ledger)
+            const wallet = await tx.wallet.findUnique({
+              where: { userId: reel.creatorId },
+            });
+            if (wallet) {
+              await tx.transaction.create({
+                data: {
+                  walletId: wallet.id,
+                  type: 'AD_REVENUE',
+                  amount: netEarnings,
+                  currency: 'INR',
+                  status: 'SUCCESS',
+                  description: `Earnings for ${reel.pendingEarningsViews} views (after 12% fee)`,
+                },
+              });
+            }
+          }
+
+          // Reset pending views
+          await tx.reel.update({
+            where: { id: reel.id },
+            data: { pendingEarningsViews: 0 },
+          });
+        });
+      } catch (error) {
+        this.logger.error(
+          `Failed to process earnings for reel ${reel.id}:`,
+          error,
+        );
+      }
+    }
+
+    this.logger.log(
+      `Hourly earnings calculation completed for ${reels.length} reels.`,
+    );
+  }
 
   async getBalance(userId: string) {
     return this.prisma.wallet.findUnique({
       where: { userId },
       include: {
-        transactions: { orderBy: { createdAt: 'desc' }, take: 20 }
-      }
+        transactions: { orderBy: { createdAt: 'desc' }, take: 20 },
+      },
     });
   }
 
@@ -28,12 +100,12 @@ export class WalletService {
           currency: 'COINS',
           status: 'SUCCESS',
           referenceId: dto.paymentReference,
-        }
+        },
       });
 
       return tx.wallet.update({
         where: { id: wallet.id },
-        data: { coinBalance: { increment: dto.amount } }
+        data: { coinBalance: { increment: dto.amount } },
       });
     });
   }
@@ -42,6 +114,10 @@ export class WalletService {
     return this.prisma.$transaction(async (tx) => {
       const wallet = await tx.wallet.findUnique({ where: { userId } });
       if (!wallet) throw new BadRequestException('Wallet not found');
+
+      if (dto.amount < 500) {
+        throw new BadRequestException('Minimum withdrawal amount is ₹500');
+      }
 
       if (wallet.inrEarnings < dto.amount) {
         throw new BadRequestException('Insufficient INR earnings');
@@ -55,12 +131,12 @@ export class WalletService {
           currency: 'INR',
           status: 'PENDING',
           referenceId: dto.upiId,
-        }
+        },
       });
 
       return tx.wallet.update({
         where: { id: wallet.id },
-        data: { inrEarnings: { decrement: dto.amount } }
+        data: { inrEarnings: { decrement: dto.amount } },
       });
     });
   }

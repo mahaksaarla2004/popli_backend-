@@ -7,7 +7,8 @@ export class UploadService {
     cloudinary.config({
       cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dekt0pjij',
       api_key: process.env.CLOUDINARY_API_KEY || '277917496774264',
-      api_secret: process.env.CLOUDINARY_API_SECRET || 'ekp_Umr7qld9fLwDdKqku033mb0',
+      api_secret:
+        process.env.CLOUDINARY_API_SECRET || 'ekp_Umr7qld9fLwDdKqku033mb0',
     });
   }
 
@@ -15,7 +16,7 @@ export class UploadService {
     const timestamp = Math.round(new Date().getTime() / 1000);
     const signature = cloudinary.utils.api_sign_request(
       { timestamp, folder },
-      process.env.CLOUDINARY_API_SECRET || 'ekp_Umr7qld9fLwDdKqku033mb0'
+      process.env.CLOUDINARY_API_SECRET || 'ekp_Umr7qld9fLwDdKqku033mb0',
     );
 
     return {

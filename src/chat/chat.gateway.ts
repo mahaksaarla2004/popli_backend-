@@ -1,4 +1,10 @@
-import { WebSocketGateway, WebSocketServer, SubscribeMessage, OnGatewayConnection, OnGatewayDisconnect } from '@nestjs/websockets';
+import {
+  WebSocketGateway,
+  WebSocketServer,
+  SubscribeMessage,
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+} from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { JwtService } from '@nestjs/jwt';
 
@@ -12,13 +18,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   handleConnection(client: Socket) {
     try {
       // Get token from auth payload or query string
-      const token = client.handshake.auth?.token || client.handshake.query?.token;
+      const token =
+        client.handshake.auth?.token || client.handshake.query?.token;
       if (!token) throw new Error('No token provided');
 
       // Verify token
-      const decoded = this.jwtService.verify(token, { secret: process.env.JWT_SECRET });
+      const decoded = this.jwtService.verify(token, {
+        secret: process.env.JWT_SECRET,
+      });
       client.data.user = decoded;
-      console.log(`Client connected and authenticated: ${client.id}, User: ${decoded.sub}`);
+      console.log(
+        `Client connected and authenticated: ${client.id}, User: ${decoded.sub}`,
+      );
     } catch (error) {
       console.log(`Client connection failed: ${client.id}`, error.message);
       client.disconnect();
@@ -35,7 +46,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('typing')
-  handleTyping(client: Socket, payload: { chatId: string, isTyping: boolean, userId: string }) {
+  handleTyping(
+    client: Socket,
+    payload: { chatId: string; isTyping: boolean; userId: string },
+  ) {
     client.to(payload.chatId).emit('typing', payload);
   }
 

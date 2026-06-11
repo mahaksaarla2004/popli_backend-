@@ -1,4 +1,10 @@
-import { IsString, IsNotEmpty, IsOptional, IsEnum, IsNumber } from 'class-validator';
+import {
+  IsString,
+  IsNotEmpty,
+  IsOptional,
+  IsEnum,
+  IsNumber,
+} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export enum MediaType {
@@ -54,6 +60,10 @@ export class CreateReelDto {
   @ApiPropertyOptional()
   @IsOptional()
   layersData?: any;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  taggedUserIds?: string[];
 }
 
 export class AddCommentDto {

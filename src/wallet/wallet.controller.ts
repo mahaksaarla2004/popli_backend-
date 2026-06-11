@@ -28,4 +28,10 @@ export class WalletController {
   withdraw(@Req() req: any, @Body() dto: WithdrawDto) {
     return this.walletService.withdraw(req.user.id, dto);
   }
+
+  @Post('test/trigger-hourly-earnings')
+  @ApiOperation({ summary: 'TEST ONLY: Manually trigger hourly earning calculation' })
+  triggerHourlyEarnings() {
+    return this.walletService.calculateHourlyEarnings();
+  }
 }

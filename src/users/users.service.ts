@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { UpdateProfileDto, UpdatePreferencesDto } from './dto/users.dto';
 
@@ -13,9 +17,9 @@ export class UsersService {
         preferences: true,
         wallet: true,
         interests: true,
-      }
+      },
     });
-    
+
     if (!user) throw new NotFoundException('User not found');
     return user;
   }
@@ -24,22 +28,27 @@ export class UsersService {
     // Validate DOB 13+
     if (dto.dob) {
       const dobDate = new Date(dto.dob);
-      const age = (Date.now() - dobDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
+      const age =
+        (Date.now() - dobDate.getTime()) / (1000 * 60 * 60 * 24 * 365.25);
       if (age < 13) {
-        throw new BadRequestException('You must be at least 13 years old to create an account.');
+        throw new BadRequestException(
+          'You must be at least 13 years old to create an account.',
+        );
       }
     }
 
     // Uniqueness checks
     if (dto.username) {
-      const existing = await this.prisma.user.findFirst({ where: { username: dto.username, id: { not: userId } } });
+      const existing = await this.prisma.user.findFirst({
+        where: { username: dto.username, id: { not: userId } },
+      });
       if (existing) throw new BadRequestException('Username is already taken');
     }
 
     const { interestIds, interestNames, dob, ...restDto } = dto;
 
     const data: any = { ...restDto };
-    
+
     if (dob) {
       data.dob = new Date(dob);
     }
@@ -47,17 +56,17 @@ export class UsersService {
     // if interestIds provided, connect them
     if (interestIds) {
       data.interests = {
-        set: interestIds.map(id => ({ id }))
+        set: interestIds.map((id) => ({ id })),
       };
     }
 
     // if interestNames provided, connect or create them
     if (interestNames) {
       data.interests = {
-        connectOrCreate: interestNames.map(name => ({
+        connectOrCreate: interestNames.map((name) => ({
           where: { name },
-          create: { name }
-        }))
+          create: { name },
+        })),
       };
     }
 
@@ -65,22 +74,24 @@ export class UsersService {
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
       data,
-      include: { interests: true }
+      include: { interests: true },
     });
 
     // Check completion criteria
     if (!updatedUser.isProfileComplete) {
       // Must have name, username, dob, and at least 1 interest
       if (
-        updatedUser.name && updatedUser.name !== 'Popli User' && 
-        updatedUser.username && !updatedUser.username.startsWith('user_') && 
-        updatedUser.dob && 
+        updatedUser.name &&
+        updatedUser.name !== 'Popli User' &&
+        updatedUser.username &&
+        !updatedUser.username.startsWith('user_') &&
+        updatedUser.dob &&
         updatedUser.interests.length > 0
       ) {
         return this.prisma.user.update({
           where: { id: userId },
           data: { isProfileComplete: true },
-          include: { interests: true }
+          include: { interests: true },
         });
       }
     }
@@ -101,9 +112,9 @@ export class UsersService {
       include: {
         reels: {
           take: 10,
-          orderBy: { createdAt: 'desc' }
-        }
-      }
+          orderBy: { createdAt: 'desc' },
+        },
+      },
     });
 
     if (!creator) throw new NotFoundException('Creator not found');
@@ -113,7 +124,7 @@ export class UsersService {
   async getCreators() {
     return this.prisma.user.findMany({
       where: {
-        reels: { some: {} } // Users who have at least one reel
+        reels: { some: {} }, // Users who have at least one reel
       },
       orderBy: { followersCount: 'desc' },
       take: 20,
@@ -126,8 +137,30 @@ export class UsersService {
         city: true,
         category: true,
         followersCount: true,
-        isVerified: true
-      }
+        isVerified: true,
+      },
+    });
+  }
+
+  async searchUsers(query: string) {
+    if (!query || query.trim() === '') {
+      return [];
+    }
+    return this.prisma.user.findMany({
+      where: {
+        OR: [
+          { username: { contains: query, mode: 'insensitive' } },
+          { name: { contains: query, mode: 'insensitive' } },
+        ],
+      },
+      take: 20,
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        avatar: true,
+        isVerified: true,
+      },
     });
   }
 }

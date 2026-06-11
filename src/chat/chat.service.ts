@@ -14,18 +14,27 @@ export class ChatService {
           include: {
             participants: {
               where: { userId: { not: userId } },
-              include: { user: { select: { id: true, username: true, name: true, avatar: true } } }
-            }
-          }
-        }
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    username: true,
+                    name: true,
+                    avatar: true,
+                  },
+                },
+              },
+            },
+          },
+        },
       },
-      orderBy: { chat: { lastMessageAt: 'desc' } }
+      orderBy: { chat: { lastMessageAt: 'desc' } },
     });
   }
 
   async getOrCreateChat(userId: string, targetUserId: string) {
     if (userId === targetUserId) {
-      throw new Error("Cannot create a chat with yourself");
+      throw new Error('Cannot create a chat with yourself');
     }
 
     // Find existing chat where both users are participants
@@ -33,13 +42,15 @@ export class ChatService {
       where: { userId },
       include: {
         chat: {
-          include: { participants: true }
-        }
-      }
+          include: { participants: true },
+        },
+      },
     });
 
-    const chat = existingChats.find(cp => 
-      cp.chat.participants.some(p => p.userId === targetUserId) && !cp.chat.isGroup
+    const chat = existingChats.find(
+      (cp) =>
+        cp.chat.participants.some((p) => p.userId === targetUserId) &&
+        !cp.chat.isGroup,
     );
 
     if (chat) {
@@ -51,12 +62,9 @@ export class ChatService {
       data: {
         isGroup: false,
         participants: {
-          create: [
-            { userId },
-            { userId: targetUserId }
-          ]
-        }
-      }
+          create: [{ userId }, { userId: targetUserId }],
+        },
+      },
     });
   }
 
@@ -65,8 +73,8 @@ export class ChatService {
       where: { chatId },
       orderBy: { createdAt: 'asc' },
       include: {
-        sender: { select: { id: true, username: true, avatar: true } }
-      }
+        sender: { select: { id: true, username: true, avatar: true } },
+      },
     });
   }
 
@@ -82,8 +90,8 @@ export class ChatService {
         mediaUrl: dto.mediaUrl,
       },
       include: {
-        sender: { select: { id: true, username: true, avatar: true } }
-      }
+        sender: { select: { id: true, username: true, avatar: true } },
+      },
     });
 
     await this.prisma.chat.update({
@@ -91,12 +99,12 @@ export class ChatService {
       data: {
         lastMessage: dto.text || 'Media',
         lastMessageAt: new Date(),
-      }
+      },
     });
 
     await this.prisma.chatParticipant.updateMany({
       where: { chatId, userId: { not: senderId } },
-      data: { unreadCount: { increment: 1 } }
+      data: { unreadCount: { increment: 1 } },
     });
 
     return message;
@@ -104,8 +112,30 @@ export class ChatService {
 
   async markRead(chatId: string, userId: string) {
     return this.prisma.chatParticipant.update({
-      where: { chatId_userId: { chatId, userId } },
-      data: { unreadCount: 0 }
+      where: {
+        chatId_userId: { chatId, userId },
+      },
+      data: { unreadCount: 0 },
     });
+  }
+
+  async deleteChat(chatId: string, userId: string) {
+    const participant = await this.prisma.chatParticipant.findUnique({
+      where: { chatId_userId: { chatId, userId } }
+    });
+    if (!participant) throw new NotFoundException('Chat not found for user');
+
+    // Deleting the chat will cascade delete messages and participants
+    return this.prisma.chat.delete({ where: { id: chatId } });
+  }
+
+  async deleteMessage(chatId: string, messageId: string, userId: string) {
+    const message = await this.prisma.message.findUnique({ where: { id: messageId } });
+    if (!message) throw new NotFoundException('Message not found');
+    if (message.senderId !== userId) {
+      throw new Error('You can only delete your own messages');
+    }
+    
+    return this.prisma.message.delete({ where: { id: messageId } });
   }
 }

@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  UseGuards,
+  Req,
+  Delete,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ChatService } from './chat.service';
@@ -31,7 +40,11 @@ export class ChatController {
 
   @Post(':id/messages')
   @ApiOperation({ summary: 'Send a message' })
-  sendMessage(@Param('id') chatId: string, @Req() req: any, @Body() dto: SendMessageDto) {
+  sendMessage(
+    @Param('id') chatId: string,
+    @Req() req: any,
+    @Body() dto: SendMessageDto,
+  ) {
     return this.chatService.sendMessage(chatId, req.user.id, dto);
   }
 
@@ -39,5 +52,17 @@ export class ChatController {
   @ApiOperation({ summary: 'Mark chat as read' })
   markRead(@Param('id') chatId: string, @Req() req: any) {
     return this.chatService.markRead(chatId, req.user.id);
+  }
+
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete a chat' })
+  deleteChat(@Param('id') chatId: string, @Req() req: any) {
+    return this.chatService.deleteChat(chatId, req.user.id);
+  }
+
+  @Delete(':id/messages/:messageId')
+  @ApiOperation({ summary: 'Delete (unsend) a message' })
+  deleteMessage(@Param('id') chatId: string, @Param('messageId') messageId: string, @Req() req: any) {
+    return this.chatService.deleteMessage(chatId, messageId, req.user.id);
   }
 }

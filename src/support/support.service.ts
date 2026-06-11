@@ -11,14 +11,14 @@ export class SupportService {
       data: {
         ...dto,
         creatorId: userId,
-      }
+      },
     });
   }
 
   async getMyTickets(userId: string) {
     return this.prisma.supportTicket.findMany({
       where: { creatorId: userId },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
   }
 }

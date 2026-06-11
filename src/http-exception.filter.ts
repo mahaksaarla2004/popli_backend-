@@ -1,4 +1,9 @@
-import { Catch, ArgumentsHost, HttpException, ExceptionFilter } from '@nestjs/common';
+import {
+  Catch,
+  ArgumentsHost,
+  HttpException,
+  ExceptionFilter,
+} from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -11,11 +16,14 @@ export class HttpExceptionFilter implements ExceptionFilter {
     const res = exception.getResponse();
 
     const logPath = path.join(__dirname, '..', 'debug.log');
-    fs.appendFileSync(logPath, JSON.stringify({
-      timestamp: new Date().toISOString(),
-      status,
-      res
-    }) + '\n');
+    fs.appendFileSync(
+      logPath,
+      JSON.stringify({
+        timestamp: new Date().toISOString(),
+        status,
+        res,
+      }) + '\n',
+    );
 
     response.status(status).json(res);
   }

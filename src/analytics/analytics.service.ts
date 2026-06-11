@@ -10,14 +10,28 @@ export class AnalyticsService {
       where: { id: userId },
       include: {
         wallet: true,
-        reels: { select: { viewsCount: true, likesCount: true, commentsCount: true, sharesCount: true } }
-      }
+        reels: {
+          select: {
+            viewsCount: true,
+            likesCount: true,
+            commentsCount: true,
+            sharesCount: true,
+          },
+        },
+      },
     });
 
     if (!user) throw new Error('User not found');
 
-    const totalViews = user.reels.reduce((sum, reel) => sum + reel.viewsCount, 0);
-    const totalEngagement = user.reels.reduce((sum, reel) => sum + reel.likesCount + reel.commentsCount + reel.sharesCount, 0);
+    const totalViews = user.reels.reduce(
+      (sum, reel) => sum + reel.viewsCount,
+      0,
+    );
+    const totalEngagement = user.reels.reduce(
+      (sum, reel) =>
+        sum + reel.likesCount + reel.commentsCount + reel.sharesCount,
+      0,
+    );
 
     return {
       totalViews,

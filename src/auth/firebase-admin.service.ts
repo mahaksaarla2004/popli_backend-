@@ -1,4 +1,8 @@
-import { Injectable, OnModuleInit, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  OnModuleInit,
+  UnauthorizedException,
+} from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import * as path from 'path';
 import * as fs from 'fs';
@@ -18,12 +22,18 @@ export class FirebaseAdminService implements OnModuleInit {
       }
     } else {
       // It's a file path (or default path)
-      const serviceAccountPath = envVal && fs.existsSync(envVal) ? envVal : path.resolve(process.cwd(), 'firebase-admin-key.json');
+      const serviceAccountPath =
+        envVal && fs.existsSync(envVal)
+          ? envVal
+          : path.resolve(process.cwd(), 'firebase-admin-key.json');
       if (fs.existsSync(serviceAccountPath)) {
         try {
           serviceAccount = require(serviceAccountPath);
         } catch (error) {
-          console.error('Failed to load Firebase Admin credential from file', error);
+          console.error(
+            'Failed to load Firebase Admin credential from file',
+            error,
+          );
         }
       }
     }
@@ -37,16 +47,23 @@ export class FirebaseAdminService implements OnModuleInit {
         }
         console.log('Firebase Admin initialized successfully.');
       } catch (error) {
-        console.error('Failed to initialize Firebase Admin with credential', error);
+        console.error(
+          'Failed to initialize Firebase Admin with credential',
+          error,
+        );
       }
     } else {
-      console.warn('⚠️ Firebase Admin credential NOT FOUND. Firebase Auth will fail.');
+      console.warn(
+        '⚠️ Firebase Admin credential NOT FOUND. Firebase Auth will fail.',
+      );
     }
   }
 
   async verifyIdToken(idToken: string): Promise<admin.auth.DecodedIdToken> {
     if (!admin.apps.length) {
-      throw new UnauthorizedException('Firebase Admin is not configured. Missing firebase-admin-key.json');
+      throw new UnauthorizedException(
+        'Firebase Admin is not configured. Missing firebase-admin-key.json',
+      );
     }
 
     try {

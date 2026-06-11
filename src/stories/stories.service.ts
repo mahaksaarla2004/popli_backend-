@@ -1,6 +1,14 @@
-import { Injectable, NotFoundException, UnauthorizedException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
-import { CreateStoryDto, ReactStoryDto, CreateHighlightDto } from './dto/stories.dto';
+import {
+  CreateStoryDto,
+  ReactStoryDto,
+  CreateHighlightDto,
+} from './dto/stories.dto';
 
 @Injectable()
 export class StoriesService {
@@ -9,20 +17,35 @@ export class StoriesService {
   async createStory(creatorId: string, dto: CreateStoryDto) {
     // Expires in 24 hours
     const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
-    
+
     let layersData = dto.layersData;
     if (typeof layersData === 'string') {
-      try { layersData = JSON.parse(layersData); } catch (e) {}
+      try {
+        layersData = JSON.parse(layersData);
+      } catch (e) {}
     }
-    
-    return this.prisma.story.create({
-      data: {
-        ...dto,
-        layersData,
-        creatorId,
-        expiresAt,
-      }
-    });
+
+    // Create the story and archive it immediately since we don't have a cron job
+    const [story, archive] = await this.prisma.$transaction([
+      this.prisma.story.create({
+        data: {
+          ...dto,
+          layersData,
+          creatorId,
+          expiresAt,
+        },
+      }),
+      this.prisma.storyArchive.create({
+        data: {
+          creatorId,
+          mediaUrl: dto.mediaUrl,
+          mediaType: dto.mediaType,
+          createdAt: new Date(),
+        },
+      }),
+    ]);
+
+    return story;
   }
 
   async getActiveStories(userId: string) {
@@ -33,9 +56,9 @@ export class StoriesService {
       },
       include: {
         creator: { select: { id: true, username: true, avatar: true } },
-        viewers: { where: { userId }, select: { id: true } } // checking if current user viewed
+        viewers: { where: { userId }, select: { id: true } }, // checking if current user viewed
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -53,14 +76,14 @@ export class StoriesService {
         storyId,
         userId,
         emoji: dto.emoji,
-      }
+      },
     });
   }
 
   async getArchivedStories(creatorId: string) {
     return this.prisma.storyArchive.findMany({
       where: { creatorId },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
     });
   }
 
@@ -69,26 +92,44 @@ export class StoriesService {
       data: {
         ...dto,
         creatorId,
-      }
+      },
     });
   }
 
   async getHighlights(creatorId: string) {
     return this.prisma.storyHighlight.findMany({
       where: { creatorId },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  async getHighlightStories(highlightId: string) {
+    const highlight = await this.prisma.storyHighlight.findUnique({
+      where: { id: highlightId },
+    });
+    if (!highlight) throw new NotFoundException('Highlight not found');
+
+    // Fetch the actual stories from the archive
+    return this.prisma.storyArchive.findMany({
+      where: {
+        id: { in: highlight.storyIds }
+      },
+      // Preserve order from highlight.storyIds if possible, or order by createdAt
+      orderBy: { createdAt: 'asc' }
     });
   }
 
   async deleteStory(storyId: string, userId: string) {
-    const story = await this.prisma.story.findUnique({ where: { id: storyId } });
+    const story = await this.prisma.story.findUnique({
+      where: { id: storyId },
+    });
     if (!story) throw new NotFoundException('Story not found');
     if (story.creatorId !== userId) {
       throw new UnauthorizedException('You can only delete your own stories');
     }
-    
+
     return this.prisma.story.delete({
-      where: { id: storyId }
+      where: { id: storyId },
     });
   }
 }
