@@ -93,4 +93,12 @@ export class StoriesController {
   deleteStory(@Param('id') storyId: string, @Req() req: any) {
     return this.storiesService.deleteStory(storyId, req.user.id);
   }
+
+  @Delete('highlights/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete a highlight' })
+  deleteHighlight(@Param('id') highlightId: string, @Req() req: any) {
+    return this.storiesService.deleteHighlight(highlightId, req.user.id);
+  }
 }

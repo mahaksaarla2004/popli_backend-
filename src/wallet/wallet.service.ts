@@ -31,8 +31,10 @@ export class WalletService {
           // Gross = Views * 5 / 1000
           const grossEarnings = (reel.pendingEarningsViews * 5) / 1000;
 
-          // Net = Gross * 0.88 (10% TDS + 2% Platform Fee deducted)
-          const netEarnings = grossEarnings * 0.88;
+          // Deductions: 10% TDS + 2% Platform Fee = 12% Total Deduction
+          const tds = grossEarnings * 0.10;
+          const platformFee = grossEarnings * 0.02;
+          const netEarnings = grossEarnings - tds - platformFee;
 
           if (netEarnings > 0) {
             // Add earnings to user's wallet
@@ -53,7 +55,7 @@ export class WalletService {
                   amount: netEarnings,
                   currency: 'INR',
                   status: 'SUCCESS',
-                  description: `Earnings for ${reel.pendingEarningsViews} views (after 12% fee)`,
+                  description: `Earnings for ${reel.pendingEarningsViews} views (TDS: ₹${tds.toFixed(2)}, Fee: ₹${platformFee.toFixed(2)})`,
                 },
               });
             }
@@ -115,13 +117,19 @@ export class WalletService {
       const wallet = await tx.wallet.findUnique({ where: { userId } });
       if (!wallet) throw new BadRequestException('Wallet not found');
 
-      if (dto.amount < 500) {
-        throw new BadRequestException('Minimum withdrawal amount is ₹500');
-      }
+      // Strict KYC Check
+      // const kyc = await tx.kYCRecord.findUnique({ where: { userId } });
+      // if (!kyc || kyc.status !== 'APPROVED') {
+      //   throw new BadRequestException('Please complete your KYC to withdraw funds.');
+      // }
 
-      if (wallet.inrEarnings < dto.amount) {
-        throw new BadRequestException('Insufficient INR earnings');
-      }
+      // if (dto.amount < 500) {
+      //   throw new BadRequestException('Minimum withdrawal amount is ₹500');
+      // }
+
+      // if (wallet.inrEarnings < dto.amount) {
+      //   throw new BadRequestException('Insufficient INR earnings');
+      // }
 
       await tx.transaction.create({
         data: {

@@ -21,6 +21,7 @@ import { UploadModule } from './upload/upload.module';
 import { AnalyticsModule } from './analytics/analytics.module';
 import { SearchModule } from './search/search.module';
 import { InterestsModule } from './interests/interests.module';
+import { ChallengesModule } from './challenges/challenges.module';
 
 @Module({
   imports: [
@@ -49,6 +50,7 @@ import { InterestsModule } from './interests/interests.module';
     AnalyticsModule,
     SearchModule,
     InterestsModule,
+    ChallengesModule,
   ],
   controllers: [AppController],
   providers: [AppService],

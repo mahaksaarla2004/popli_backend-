@@ -17,6 +17,9 @@ export class UsersService {
         preferences: true,
         wallet: true,
         interests: true,
+        reels: {
+          orderBy: { createdAt: 'desc' },
+        },
       },
     });
 
@@ -76,6 +79,8 @@ export class UsersService {
       data,
       include: { interests: true },
     });
+
+
 
     // Check completion criteria
     if (!updatedUser.isProfileComplete) {

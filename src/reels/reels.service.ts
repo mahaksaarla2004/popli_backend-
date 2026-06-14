@@ -2,13 +2,18 @@ import {
   Injectable,
   NotFoundException,
   BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { ChatService } from '../chat/chat.service';
 import { CreateReelDto, AddCommentDto } from './dto/reels.dto';
 
 @Injectable()
 export class ReelsService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private chatService: ChatService
+  ) {}
 
   async createReel(creatorId: string, dto: CreateReelDto) {
     let layersData = dto.layersData;
@@ -20,7 +25,7 @@ export class ReelsService {
 
     const { taggedUserIds, ...restDto } = dto;
 
-    return this.prisma.reel.create({
+    const reel = await this.prisma.reel.create({
       data: {
         ...restDto,
         layersData,
@@ -32,14 +37,92 @@ export class ReelsService {
         }),
       },
     });
+
+    if (taggedUserIds && taggedUserIds.length > 0) {
+      const creator = await this.prisma.user.findUnique({
+        where: { id: creatorId },
+        select: { id: true, name: true, avatar: true },
+      });
+
+      if (creator) {
+        for (const taggedUserId of taggedUserIds) {
+          if (taggedUserId !== creatorId) {
+            // Send Notification
+            await this.prisma.notification.create({
+              data: {
+                userId: taggedUserId,
+                type: 'tag',
+                title: 'You were tagged!',
+                body: `${creator.name} tagged you in a new post/reel.`,
+                senderId: creatorId,
+                senderAvatar: creator.avatar || 'https://i.pravatar.cc/150',
+              },
+            });
+
+            // Send Chat Message
+            try {
+              const chat = await this.chatService.getOrCreateChat(creatorId, taggedUserId);
+              await this.chatService.sendMessage(chat.id, creatorId, {
+                text: `Hey! I tagged you in my new post/reel.`,
+              });
+            } catch (err) {
+              console.error('Failed to send chat message for tagging', err);
+            }
+          }
+        }
+      }
+    }
+
+    return reel;
   }
 
-  async getFeed(page: number = 1, limit: number = 10, category?: string) {
-    const skip = (page - 1) * limit;
-    const where = category && category !== 'all' ? { category } : {};
+  async getFeed(page: number = 1, limit: number = 10, category?: string, excludeIds: string[] = []) {
+    // We ignore skip (page) for the database query because we are randomizing
+    // We fetch a larger pool (e.g., 50) of recent reels that haven't been seen yet
+    const where: any = category && category !== 'all' ? { category } : {};
+    
+    if (excludeIds.length > 0) {
+      where.id = { notIn: excludeIds };
+    }
 
-    return this.prisma.reel.findMany({
+    const pool = await this.prisma.reel.findMany({
       where,
+      take: 50,
+      orderBy: { createdAt: 'desc' }, // Get recent ones to keep feed fresh
+      include: {
+        creator: {
+          select: { id: true, name: true, username: true, avatar: true, isVerified: true },
+        },
+        taggedUsers: {
+          select: { id: true, username: true, avatar: true },
+        },
+      },
+    });
+
+    // Fisher-Yates Shuffle for true algorithmic randomness
+    const shuffled = [...pool];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    
+    // Return the requested limit
+    return shuffled.slice(0, limit);
+  }
+
+  async getFollowingFeed(userId: string, page: number = 1, limit: number = 10) {
+    const skip = (page - 1) * limit;
+
+    const follows = await this.prisma.follows.findMany({
+      where: { followerId: userId },
+      select: { followingId: true },
+    });
+    const followingIds = follows.map(f => f.followingId);
+
+    console.log(`[getFollowingFeed] User ${userId} follows:`, followingIds);
+
+    const reels = await this.prisma.reel.findMany({
+      where: { creatorId: { in: followingIds } },
       skip,
       take: limit,
       orderBy: { createdAt: 'desc' },
@@ -62,6 +145,62 @@ export class ReelsService {
         },
       },
     });
+
+    console.log(`[getFollowingFeed] Returning ${reels.length} reels.`);
+    return reels;
+  }
+
+  async getUserReels(userId: string) {
+    return this.prisma.reel.findMany({
+      where: { creatorId: userId },
+      orderBy: { createdAt: 'desc' },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            avatar: true,
+            isVerified: true,
+          },
+        },
+        taggedUsers: {
+          select: {
+            id: true,
+            username: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+  }
+
+  async getReelById(reelId: string) {
+    console.log("getReelById called with:", reelId);
+    const reel = await this.prisma.reel.findUnique({
+      where: { id: reelId },
+      include: {
+        creator: {
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            avatar: true,
+            isVerified: true,
+          },
+        },
+        taggedUsers: {
+          select: {
+            id: true,
+            username: true,
+            avatar: true,
+          },
+        },
+      },
+    });
+
+    if (!reel) throw new NotFoundException('Reel not found');
+    return reel;
   }
 
   async getNearbyFeed(
@@ -307,9 +446,12 @@ export class ReelsService {
     if (!reel) throw new NotFoundException('Reel not found');
 
     // Rule 3: Creator cannot count own views for earnings (or public views typically)
+    // DISABLED FOR LOCAL TESTING so you can see your own views in Analytics
+    /*
     if (userId && reel.creatorId === userId) {
       return { success: true, ignored: true, reason: 'creator' };
     }
+    */
 
     if (userId) {
       // Rule 2: One view per user per video
@@ -338,12 +480,18 @@ export class ReelsService {
         data: { userId, reelId },
       });
 
-      await this.prisma.reel.update({
+      const updatedReel = await this.prisma.reel.update({
         where: { id: reelId },
         data: {
           viewsCount: { increment: 1 },
-          pendingEarningsViews: { increment: 1 }, // <--- Added for hourly calculation
+          pendingEarningsViews: { increment: 1 }, // Keep for potential hourly ledger creation
         },
+      });
+
+      // INSTANT EARNINGS FOR DEMO: Add to wallet immediately (0.005 gross -> 0.0044 net per view)
+      await this.prisma.wallet.update({
+        where: { userId: updatedReel.creatorId },
+        data: { inrEarnings: { increment: 0.0044 } }
       });
     } else {
       // Anonymous view. Do not count towards earnings, just public viewsCount.
@@ -400,5 +548,18 @@ export class ReelsService {
       },
     });
     return history.map((h) => h.reel);
+  }
+
+  async deleteReel(reelId: string, userId: string) {
+    const reel = await this.prisma.reel.findUnique({ where: { id: reelId } });
+    if (!reel) {
+      return { success: true, message: 'Reel already deleted' };
+    }
+    if (reel.creatorId !== userId) {
+      throw new UnauthorizedException('You can only delete your own reels');
+    }
+    return this.prisma.reel.delete({
+      where: { id: reelId },
+    });
   }
 }

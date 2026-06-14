@@ -7,6 +7,7 @@ import {
   UseGuards,
   Req,
   Query,
+  Delete,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -32,11 +33,36 @@ export class ReelsController {
     @Query('page') page: string,
     @Query('limit') limit: string,
     @Query('category') category: string,
+    @Query('excludeIds') excludeIds: string,
   ) {
+    const excludeIdsArray = excludeIds ? excludeIds.split(',').filter(id => id.length > 0) : [];
     return this.reelsService.getFeed(
       Number(page) || 1,
       Number(limit) || 10,
       category,
+      excludeIdsArray
+    );
+  }
+
+  @Get('user/:id')
+  @ApiOperation({ summary: 'Get reels posted by a specific user' })
+  getUserReels(@Param('id') userId: string) {
+    return this.reelsService.getUserReels(userId);
+  }
+
+  @Get('following')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get reels from followed users' })
+  getFollowingFeed(
+    @Req() req: any,
+    @Query('page') page: string,
+    @Query('limit') limit: string,
+  ) {
+    return this.reelsService.getFollowingFeed(
+      req.user.id,
+      Number(page) || 1,
+      Number(limit) || 10,
     );
   }
 
@@ -105,5 +131,20 @@ export class ReelsController {
   registerView(@Param('id') reelId: string, @Req() req: any) {
     // If the user is authenticated, log to watch history.
     return this.reelsService.incrementView(reelId, req.user?.id);
+  }
+
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a single reel by ID' })
+  getReelById(@Param('id') reelId: string) {
+    return this.reelsService.getReelById(reelId);
+  }
+
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete a reel' })
+  deleteReel(@Param('id') reelId: string, @Req() req: any) {
+    console.log(`[DELETE REEL] User ${req.user?.id} is trying to delete reel ID: ${reelId}`);
+    return this.reelsService.deleteReel(reelId, req.user.id);
   }
 }

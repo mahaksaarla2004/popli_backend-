@@ -95,7 +95,7 @@ export class SocialService {
       return { blocked: false };
     } else {
       // Also remove follow relationships if blocking
-      await this.prisma.follows.deleteMany({
+      const existingFollows = await this.prisma.follows.findMany({
         where: {
           OR: [
             { followerId: blockerId, followingId: blockedId },
@@ -103,6 +103,20 @@ export class SocialService {
           ],
         },
       });
+
+      for (const follow of existingFollows) {
+        await this.prisma.follows.delete({
+          where: { followerId_followingId: { followerId: follow.followerId, followingId: follow.followingId } },
+        });
+        await this.prisma.user.update({
+          where: { id: follow.followerId },
+          data: { followingCount: { decrement: 1 } },
+        });
+        await this.prisma.user.update({
+          where: { id: follow.followingId },
+          data: { followersCount: { decrement: 1 } },
+        });
+      }
       await this.prisma.block.create({ data: { blockerId, blockedId } });
       return { blocked: true };
     }

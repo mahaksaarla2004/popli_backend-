@@ -71,6 +71,40 @@ export class AuthService {
         }
       }
 
+      // Generate a unique 6-character referral code
+      const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase() + Math.floor(Math.random() * 100);
+      
+      let referredById = null;
+
+      // Handle Referral Logic
+      if (dto.referredByCode) {
+        const referrer = await this.prisma.user.findUnique({
+          where: { referralCode: dto.referredByCode }
+        });
+        
+        if (referrer) {
+          referredById = referrer.id;
+          // Credit referrer's wallet with ₹10
+          const referrerWallet = await this.prisma.wallet.findUnique({ where: { userId: referrer.id } });
+          if (referrerWallet) {
+            await this.prisma.wallet.update({
+              where: { userId: referrer.id },
+              data: { inrEarnings: { increment: 10 } }
+            });
+            await this.prisma.transaction.create({
+              data: {
+                walletId: referrerWallet.id,
+                type: 'REFERRAL_BONUS',
+                amount: 10,
+                currency: 'INR',
+                status: 'SUCCESS',
+                description: 'Referral Bonus for a new user signup'
+              }
+            });
+          }
+        }
+      }
+
       // Auto-register as incomplete user
       user = await this.prisma.user.create({
         data: {
@@ -78,6 +112,9 @@ export class AuthService {
           username: `user_${Date.now()}`,
           name: 'Popli User',
           isProfileComplete: false,
+          deviceId: deviceIdToCheck,
+          referralCode,
+          referredById,
         },
       });
       // create default wallet and preferences
@@ -130,7 +167,8 @@ export class AuthService {
         where: {
           OR: [
             { phone: { in: possiblePhones } }, 
-            { email: dto.identifier }
+            { email: dto.identifier },
+            { username: dto.identifier }
           ],
         },
       });
@@ -145,8 +183,9 @@ export class AuthService {
           exists: true,
           field: 'identifier',
           message:
-            'This mobile number is already registered. Please login instead.',
+            'This account is already registered. Please login instead.',
           userId: user.id,
+          phone: user.phone,
           isProfileComplete: user.isProfileComplete,
         };
       }

@@ -13,6 +13,7 @@ export class SocialController {
   @Post('follow/:id')
   @ApiOperation({ summary: 'Toggle follow user' })
   toggleFollow(@Param('id') followingId: string, @Req() req: any) {
+    console.log(`[ToggleFollow] User ${req.user.id} attempting to follow/unfollow ${followingId}`);
     return this.socialService.toggleFollow(req.user.id, followingId);
   }
 

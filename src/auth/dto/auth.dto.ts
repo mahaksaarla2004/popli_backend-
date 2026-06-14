@@ -28,6 +28,16 @@ export class VerifyOtpDto {
   @IsOptional()
   @IsString()
   username?: string;
+
+  @ApiProperty({ example: 'device-12345', required: false })
+  @IsOptional()
+  @IsString()
+  deviceId?: string;
+
+  @ApiProperty({ example: 'REF123', required: false })
+  @IsOptional()
+  @IsString()
+  referredByCode?: string;
 }
 
 export class RefreshTokenDto {
@@ -59,4 +69,9 @@ export class VerifyFirebaseTokenDto {
   @IsOptional()
   @IsString()
   deviceId?: string;
+
+  @ApiProperty({ example: 'REF123', required: false })
+  @IsOptional()
+  @IsString()
+  referredByCode?: string;
 }

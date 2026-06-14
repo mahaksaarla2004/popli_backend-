@@ -59,6 +59,10 @@ model User {
   blocking           Block[]           @relation("Blocker")
   blockedBy          Block[]           @relation("Blocked")
   taggedInReels      Reel[]            @relation("ReelTaggedUsers")
+  deviceId           String?
+  referralCode       String?           @unique
+  referredById       String?
+  challengeParticipations ChallengeParticipant[]
 }
 
 model Session {
@@ -125,6 +129,7 @@ model Reel {
   description          String?
   musicName            String?
   category             String?
+  privacy              String         @default("Everyone")
   viewsCount           Int            @default(0)
   likesCount           Int            @default(0)
   commentsCount        Int            @default(0)
@@ -134,6 +139,7 @@ model Reel {
   latitude             Float?
   longitude            Float?
   city                 String?
+  isMonetized          Boolean        @default(true)
   createdAt            DateTime       @default(now())
   updatedAt            DateTime       @updatedAt
   layersData           Json?
@@ -394,6 +400,8 @@ enum TransactionType {
   COIN_RECHARGE
   WITHDRAWAL
   AD_REVENUE
+  REFERRAL_BONUS
+  CHALLENGE_REWARD
 }
 
 enum TransactionStatus {
@@ -448,4 +456,43 @@ model Block {
   blocked   User     @relation("Blocked", fields: [blockedId], references: [id], onDelete: Cascade)
 
   @@unique([blockerId, blockedId])
+}
+
+model Challenge {
+  id           String                 @id @default(uuid())
+  title        String
+  description  String?
+  type         ChallengeType          @default(DAILY)
+  rewardPool   Float                  @default(0.0)
+  status       ChallengeStatus        @default(ACTIVE)
+  startDate    DateTime               @default(now())
+  endDate      DateTime
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  participants ChallengeParticipant[]
+}
+
+model ChallengeParticipant {
+  id          String    @id @default(uuid())
+  challengeId String
+  userId      String
+  score       Int       @default(0)
+  rank        Int?
+  joinedAt    DateTime  @default(now())
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, userId])
+}
+
+enum ChallengeType {
+  DAILY
+  WEEKLY
+  CUSTOM
+}
+
+enum ChallengeStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
 }

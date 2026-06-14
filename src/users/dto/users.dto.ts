@@ -15,6 +15,17 @@ export class UpdateProfileDto {
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
+  email?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  phone?: string;
+
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
   avatar?: string;
 
   @ApiPropertyOptional()

@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsEnum,
   IsNumber,
+  IsBoolean,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -43,6 +44,11 @@ export class CreateReelDto {
   category?: string;
 
   @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  privacy?: string;
+
+  @ApiPropertyOptional()
   @IsNumber()
   @IsOptional()
   latitude?: number;
@@ -58,12 +64,18 @@ export class CreateReelDto {
   city?: string;
 
   @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  isMonetized?: boolean;
+
+  @ApiPropertyOptional()
   @IsOptional()
   layersData?: any;
 
   @ApiPropertyOptional()
   @IsOptional()
   taggedUserIds?: string[];
+
 }
 
 export class AddCommentDto {

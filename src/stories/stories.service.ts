@@ -132,4 +132,20 @@ export class StoriesService {
       where: { id: storyId },
     });
   }
+
+  async deleteHighlight(highlightId: string, userId: string) {
+    const highlight = await this.prisma.storyHighlight.findUnique({
+      where: { id: highlightId },
+    });
+    if (!highlight) {
+      throw new NotFoundException('Highlight not found');
+    }
+    if (highlight.creatorId !== userId) {
+      throw new UnauthorizedException('You can only delete your own highlights');
+    }
+
+    return this.prisma.storyHighlight.delete({
+      where: { id: highlightId },
+    });
+  }
 }

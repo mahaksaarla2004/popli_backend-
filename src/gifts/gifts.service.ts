@@ -23,9 +23,9 @@ export class GiftsService {
         throw new BadRequestException('Wallet not found');
       }
 
-      if (senderWallet.coinBalance < dto.cost) {
-        throw new BadRequestException('Insufficient coins');
-      }
+      // if (senderWallet.coinBalance < dto.cost) {
+      //   throw new BadRequestException('Insufficient coins');
+      // }
 
       // Deduct coins from sender
       await tx.wallet.update({
