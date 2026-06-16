@@ -5,6 +5,7 @@ import {
   Req,
   HttpCode,
   HttpStatus,
+  Res
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -15,6 +16,8 @@ import {
   CheckUserDto,
   VerifyFirebaseTokenDto,
 } from './dto/auth.dto';
+import { UseGuards } from '@nestjs/common';
+import { JwtAuthGuard } from './jwt-auth.guard';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -40,10 +43,20 @@ export class AuthController {
   @Post('verify-firebase-token')
   @ApiOperation({ summary: 'Verify Firebase ID Token and get JWT' })
   @HttpCode(HttpStatus.OK)
-  verifyFirebaseToken(@Body() dto: VerifyFirebaseTokenDto, @Req() req: any) {
-    const ip = req.ip || '';
-    const userAgent = req.headers['user-agent'] || '';
-    return this.authService.verifyFirebaseToken(dto, ip, userAgent);
+  async verifyFirebaseToken(@Body() dto: VerifyFirebaseTokenDto, @Req() req: any, @Res() res: any) {
+    try {
+      const ip = req.ip || '';
+      const userAgent = req.headers['user-agent'] || '';
+      const result = await this.authService.verifyFirebaseToken(dto, ip, userAgent);
+      return res.status(HttpStatus.OK).json(result);
+    } catch (error: any) {
+      console.error('VERIFY ERROR:', error);
+      return res.status(error.status || 500).json({ 
+        message: error.message, 
+        stack: error.stack, 
+        fullError: JSON.stringify(error) 
+      });
+    }
   }
 
   @Post('check-user')
@@ -65,5 +78,13 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   logout(@Body() dto: RefreshTokenDto) {
     return this.authService.logout(dto.refreshToken);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Post('logout-all')
+  @ApiOperation({ summary: 'Invalidate all sessions for the user' })
+  @HttpCode(HttpStatus.OK)
+  logoutAll(@Req() req: any) {
+    return this.authService.logoutAll(req.user.sub);
   }
 }

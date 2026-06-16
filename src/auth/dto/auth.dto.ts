@@ -74,4 +74,29 @@ export class VerifyFirebaseTokenDto {
   @IsOptional()
   @IsString()
   referredByCode?: string;
+
+  @ApiProperty({ example: 'login', required: false })
+  @IsOptional()
+  @IsString()
+  intent?: 'login' | 'signup';
+
+  @ApiProperty({ example: 'Mahek Saarla', required: false })
+  @IsOptional()
+  @IsString()
+  name?: string;
+
+  @ApiProperty({ example: 'mahek_saarla', required: false })
+  @IsOptional()
+  @IsString()
+  username?: string;
+
+  @ApiProperty({ example: 'mahek@example.com', required: false })
+  @IsOptional()
+  @IsEmail()
+  email?: string;
+
+  @ApiProperty({ example: '10/05/2004', required: false })
+  @IsOptional()
+  @IsString()
+  dob?: string;
 }

@@ -9,7 +9,8 @@ datasource db {
 
 model User {
   id                 String            @id @default(uuid())
-  phone              String?           @unique
+  firebaseUid        String?           @unique
+  phone              String            @unique
   email              String?           @unique
   passwordHash       String?
   name               String
@@ -68,12 +69,20 @@ model User {
 model Session {
   id           String   @id @default(uuid())
   userId       String
-  refreshToken String   @unique
+  tokenHash    String   @unique
   deviceInfo   String?
   ipAddress    String?
   expiresAt    DateTime
   createdAt    DateTime @default(now())
+  revoked      Boolean  @default(false)
   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model OtpAudit {
+  id           String   @id @default(uuid())
+  phoneNumber  String
+  attempts     Int      @default(1)
+  createdAt    DateTime @default(now())
 }
 
 model UserPreference {

@@ -87,7 +87,7 @@ export class ReelsService {
 
     const pool = await this.prisma.reel.findMany({
       where,
-      take: 50,
+      take: 100, // Increased pool size for better randomness across large datasets
       orderBy: { createdAt: 'desc' }, // Get recent ones to keep feed fresh
       include: {
         creator: {
@@ -488,10 +488,10 @@ export class ReelsService {
         },
       });
 
-      // INSTANT EARNINGS FOR DEMO: Add to wallet immediately (0.005 gross -> 0.0044 net per view)
+      // INSTANT EARNINGS: Add to wallet immediately (0.005 gross -> minus 10% TDS -> 0.0045 net per view)
       await this.prisma.wallet.update({
         where: { userId: updatedReel.creatorId },
-        data: { inrEarnings: { increment: 0.0044 } }
+        data: { inrEarnings: { increment: 0.0045 } }
       });
     } else {
       // Anonymous view. Do not count towards earnings, just public viewsCount.

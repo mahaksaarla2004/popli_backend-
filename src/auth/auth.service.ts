@@ -54,7 +54,27 @@ export class AuthService {
       );
     }
 
-    if (!user) {
+    if (dto.intent === 'login') {
+      if (!user) {
+        throw new UnauthorizedException('No account found. Please sign up first.');
+      }
+    } else if (dto.intent === 'signup') {
+      if (user) {
+        throw new BadRequestException('Account already exists. Please log in.');
+      }
+
+      // Check username if provided
+      let finalUsername = `user_${Date.now()}`;
+      if (dto.username) {
+        finalUsername = dto.username.toLowerCase();
+        const existingUsername = await this.prisma.user.findUnique({
+          where: { username: finalUsername },
+        });
+        if (existingUsername) {
+          throw new BadRequestException('Username is already taken');
+        }
+      }
+
       // RULE 4: Device Limit Check
       const deviceIdToCheck = dto.deviceId || userAgent;
       if (deviceIdToCheck) {
@@ -105,13 +125,17 @@ export class AuthService {
         }
       }
 
-      // Auto-register as incomplete user
+      // Register complete user
+      const dobDate = dto.dob ? new Date(dto.dob.split('/').reverse().join('-')) : null;
+
       user = await this.prisma.user.create({
         data: {
           phone,
-          username: `user_${Date.now()}`,
-          name: 'Popli User',
-          isProfileComplete: false,
+          email: dto.email || null,
+          username: finalUsername,
+          name: dto.name || 'Popli User',
+          dob: dobDate,
+          isProfileComplete: true, // We have all fields now
           deviceId: deviceIdToCheck,
           referralCode,
           referredById,
@@ -122,16 +146,23 @@ export class AuthService {
       await this.prisma.userPreference.create({ data: { userId: user.id } });
     }
 
+    if (!user) {
+      throw new BadRequestException('Invalid authentication flow.');
+    }
+
     // Generate JWT
     const payload = { sub: user.id, role: user.role };
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+    
+    // Hash refresh token
+    const tokenHash = await bcrypt.hash(refreshToken, 10);
 
     // Store session
     await this.prisma.session.create({
       data: {
         userId: user.id,
-        refreshToken,
+        tokenHash,
         ipAddress: ip,
         deviceInfo: dto.deviceId || userAgent,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
@@ -220,50 +251,6 @@ export class AuthService {
     throw new BadRequestException(
       'Please use Firebase Token Verification for OTPs.',
     );
-
-    let user = await this.prisma.user.findFirst({
-      where: {
-        OR: [{ phone: dto.identifier }, { email: dto.identifier }],
-      },
-    });
-
-    // If user exists and it's a signup request (indicated by providing a username)
-    if (user && dto.username) {
-      throw new BadRequestException(
-        'Account already exists with this mobile number. Please log in.',
-      );
-    }
-
-    if (!user) {
-      // Auto-register
-      const isEmail = dto.identifier.includes('@');
-
-      let finalUsername = `user_${Date.now()}`;
-      if (typeof dto.username === 'string') {
-        // Enforce lowercase
-        finalUsername = dto.username!.toLowerCase();
-        const existingUser = await this.prisma.user.findUnique({
-          where: { username: finalUsername },
-        });
-        if (existingUser) {
-          throw new BadRequestException('Username is already taken');
-        }
-      }
-
-      user = await this.prisma.user.create({
-        data: {
-          phone: !isEmail ? dto.identifier : null,
-          email: isEmail ? dto.identifier : null,
-          username: finalUsername,
-          name: dto.name || 'New User',
-        },
-      });
-      // create default wallet and preferences
-      await this.prisma.wallet.create({ data: { userId: user!.id } });
-      await this.prisma.userPreference.create({ data: { userId: user!.id } });
-    }
-
-    return this.generateTokens(user!.id, ip, userAgent);
   }
 
   private async generateTokens(userId: string, ip: string, userAgent: string) {
@@ -277,11 +264,13 @@ export class AuthService {
       expiresIn: '7d',
     });
 
+    const tokenHash = await bcrypt.hash(refreshToken, 10);
+
     // Save session
     await this.prisma.session.create({
       data: {
         userId,
-        refreshToken,
+        tokenHash,
         ipAddress: ip,
         deviceInfo: userAgent,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
@@ -292,38 +281,98 @@ export class AuthService {
   }
 
   async refreshToken(dto: RefreshTokenDto) {
-    const session = await this.prisma.session.findUnique({
-      where: { refreshToken: dto.refreshToken },
-    });
-
-    if (!session || session.expiresAt < new Date()) {
-      if (session) {
-        await this.prisma.session.delete({ where: { id: session.id } });
-      }
-      throw new UnauthorizedException('Invalid or expired refresh token');
-    }
-
+    // Since we hash tokens, we need to find the session that matches this token.
+    // However, bcrypt.compare is slow to run across all sessions.
+    // Instead, we decode the token to get the userId, then find their sessions.
+    let decoded;
     try {
-      this.jwtService.verify(dto.refreshToken, {
-        secret: process.env.JWT_REFRESH_SECRET,
+      decoded = this.jwtService.verify(dto.refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
       });
     } catch {
       throw new UnauthorizedException('Invalid refresh token');
     }
 
-    const payload = { sub: session.userId };
+    const sessions = await this.prisma.session.findMany({
+      where: { userId: decoded.sub, revoked: false, expiresAt: { gt: new Date() } },
+    });
+
+    let validSession = null;
+    for (const session of sessions) {
+      const isMatch = await bcrypt.compare(dto.refreshToken, session.tokenHash);
+      if (isMatch) {
+        validSession = session;
+        break;
+      }
+    }
+
+    if (!validSession) {
+      throw new UnauthorizedException('Session expired or revoked');
+    }
+
+    // Refresh token rotation: Revoke old, issue new
+    await this.prisma.session.update({
+      where: { id: validSession.id },
+      data: { revoked: true },
+    });
+
+    const payload = { sub: validSession.userId };
     const newAccessToken = this.jwtService.sign(payload, {
       secret: process.env.JWT_SECRET,
       expiresIn: '7d',
     });
+    const newRefreshToken = this.jwtService.sign(payload, {
+      secret: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+      expiresIn: '7d',
+    });
 
-    return { accessToken: newAccessToken };
+    const newTokenHash = await bcrypt.hash(newRefreshToken, 10);
+
+    await this.prisma.session.create({
+      data: {
+        userId: validSession.userId,
+        tokenHash: newTokenHash,
+        ipAddress: validSession.ipAddress,
+        deviceInfo: validSession.deviceInfo,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      },
+    });
+
+    return { accessToken: newAccessToken, refreshToken: newRefreshToken };
   }
 
   async logout(refreshToken: string) {
-    await this.prisma.session.deleteMany({
-      where: { refreshToken },
+    let decoded;
+    try {
+      decoded = this.jwtService.verify(refreshToken, {
+        secret: process.env.JWT_REFRESH_SECRET || process.env.JWT_SECRET,
+      });
+    } catch {
+      return { message: 'Logged out successfully' };
+    }
+
+    const sessions = await this.prisma.session.findMany({
+      where: { userId: decoded.sub, revoked: false },
     });
+
+    for (const session of sessions) {
+      const isMatch = await bcrypt.compare(refreshToken, session.tokenHash);
+      if (isMatch) {
+        await this.prisma.session.update({
+          where: { id: session.id },
+          data: { revoked: true },
+        });
+        break;
+      }
+    }
     return { message: 'Logged out successfully' };
+  }
+
+  async logoutAll(userId: string) {
+    await this.prisma.session.updateMany({
+      where: { userId },
+      data: { revoked: true },
+    });
+    return { message: 'Logged out from all devices successfully' };
   }
 }

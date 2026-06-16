@@ -31,17 +31,14 @@ export class WalletService {
           // Gross = Views * 5 / 1000
           const grossEarnings = (reel.pendingEarningsViews * 5) / 1000;
 
-          // Deductions: 10% TDS + 2% Platform Fee = 12% Total Deduction
+          // Deductions: 10% TDS
           const tds = grossEarnings * 0.10;
-          const platformFee = grossEarnings * 0.02;
-          const netEarnings = grossEarnings - tds - platformFee;
+          const netEarnings = grossEarnings - tds;
 
           if (netEarnings > 0) {
-            // Add earnings to user's wallet
-            await tx.wallet.update({
-              where: { userId: reel.creatorId },
-              data: { inrEarnings: { increment: netEarnings } },
-            });
+            // Note: We DO NOT increment the wallet balance here anymore!
+            // It is already incremented in real-time inside `incrementView` (reels.service.ts).
+            // We only create the transaction record here for the ledger.
 
             // Log transaction (Optional, but good for ledger)
             const wallet = await tx.wallet.findUnique({
@@ -55,7 +52,7 @@ export class WalletService {
                   amount: netEarnings,
                   currency: 'INR',
                   status: 'SUCCESS',
-                  description: `Earnings for ${reel.pendingEarningsViews} views (TDS: ₹${tds.toFixed(2)}, Fee: ₹${platformFee.toFixed(2)})`,
+                  description: `Earnings for ${reel.pendingEarningsViews} views (TDS: ₹${tds.toFixed(2)})`,
                 },
               });
             }

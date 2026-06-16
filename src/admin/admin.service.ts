@@ -38,6 +38,7 @@ export class AdminService {
             passwordHash: hashedPassword,
             role: 'ADMIN',
             isVerified: true,
+            phone: '+910000000000',
           },
         });
         const token = this.jwtService.sign({
