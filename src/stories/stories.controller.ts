@@ -58,6 +58,39 @@ export class StoriesController {
     return this.storiesService.reactToStory(storyId, req.user.id, dto);
   }
 
+  @Post(':id/interact')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Interact with a story sticker (Poll, Question, etc)' })
+  interactWithStory(
+    @Param('id') storyId: string,
+    @Req() req: any,
+    @Body() dto: any,
+  ) {
+    return this.storiesService.interactWithStory(storyId, req.user.id, dto);
+  }
+
+  @Get(':id/interactions')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get story interactions' })
+  getStoryInteractions(
+    @Param('id') storyId: string,
+  ) {
+    return this.storiesService.getStoryInteractions(storyId);
+  }
+
+  @Get(':id/viewers')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get story viewers (Creator only)' })
+  getStoryViewers(
+    @Param('id') storyId: string,
+    @Req() req: any,
+  ) {
+    return this.storiesService.getStoryViewers(storyId, req.user.id);
+  }
+
   @Get('archive')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

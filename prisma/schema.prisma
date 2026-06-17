@@ -58,6 +58,7 @@ model User {
   archivedStories             StoryArchive[]               @relation("CreatorArchives")
   storyHighlights             StoryHighlight[]             @relation("CreatorHighlights")
   storyReactions              StoryReaction[]
+  storyInteractions           StoryInteraction[]
   storyViews                  StoryViewer[]
   ticketsSubmitted            SupportTicket[]              @relation("TicketCreator")
   preferences                 UserPreference?
@@ -244,6 +245,7 @@ model Story {
   creator               User            @relation("CreatorStories", fields: [creatorId], references: [id], onDelete: Cascade)
   reactions             StoryReaction[]
   viewers               StoryViewer[]
+  interactions          StoryInteraction[]
 }
 
 model StoryViewer {
@@ -265,6 +267,20 @@ model StoryReaction {
   createdAt DateTime @default(now())
   story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model StoryInteraction {
+  id          String   @id @default(uuid())
+  storyId     String
+  layerId     String   // The ID of the sticker layer (Poll, Question, AddYours)
+  userId      String
+  type        String   // "POLL_VOTE", "QUESTION_RESPONSE", "ADD_YOURS"
+  value       String   // Option index or text response
+  createdAt   DateTime @default(now())
+  story       Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([storyId, layerId, userId])
 }
 
 model StoryArchive {

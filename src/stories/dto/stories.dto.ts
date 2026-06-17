@@ -88,3 +88,20 @@ export class CreateHighlightDto {
   @IsString({ each: true })
   storyIds: string[];
 }
+
+export class InteractStoryDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  layerId: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  type: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  value: string;
+}

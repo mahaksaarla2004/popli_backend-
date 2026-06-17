@@ -686,6 +686,25 @@ export class ReelsService {
           }
         });
 
+        // Award 1 Coin to Viewer for watching
+        const viewerWallet = await this.prisma.wallet.upsert({
+          where: { userId },
+          create: { userId, coinBalance: 1 },
+          update: { coinBalance: { increment: 1 } },
+        });
+
+        // Record Coin Earning Transaction
+        await this.prisma.transaction.create({
+          data: {
+            walletId: viewerWallet.id,
+            type: 'AD_REVENUE',
+            amount: 1,
+            currency: 'COINS',
+            status: 'SUCCESS',
+            referenceId: `view_${reelId}_${Date.now()}`,
+          }
+        });
+
         // Also record WatchHistory
         await this.prisma.watchHistory.upsert({
           where: { userId_reelId: { userId, reelId } },

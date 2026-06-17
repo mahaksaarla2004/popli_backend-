@@ -246,6 +246,61 @@ export class StoriesService {
     });
   }
 
+  async interactWithStory(storyId: string, userId: string, dto: any) {
+    // Upsert so a user can change their vote if needed, or prevent duplicates easily
+    return this.prisma.storyInteraction.upsert({
+      where: {
+        storyId_layerId_userId: {
+          storyId,
+          layerId: dto.layerId,
+          userId,
+        }
+      },
+      update: {
+        type: dto.type,
+        value: dto.value,
+      },
+      create: {
+        storyId,
+        layerId: dto.layerId,
+        userId,
+        type: dto.type,
+        value: dto.value,
+      }
+    });
+  }
+
+  async getStoryInteractions(storyId: string) {
+    return this.prisma.storyInteraction.findMany({
+      where: { storyId },
+      include: {
+        user: { select: { id: true, username: true, avatar: true, name: true } }
+      }
+    });
+  }
+
+  async getStoryViewers(storyId: string, userId: string) {
+    const story = await this.prisma.story.findUnique({
+      where: { id: storyId },
+      select: { creatorId: true },
+    });
+
+    if (!story) throw new NotFoundException('Story not found');
+    if (story.creatorId !== userId) {
+      throw new UnauthorizedException('Only the story creator can see viewers');
+    }
+
+    return this.prisma.storyViewer.findMany({
+      where: { storyId },
+      include: {
+        user: {
+          select: { id: true, username: true, name: true, avatar: true }
+        }
+      },
+      orderBy: { viewedAt: 'desc' }
+    });
+  }
+
   async getArchivedStories(creatorId: string) {
     return this.prisma.storyArchive.findMany({
       where: { creatorId },
