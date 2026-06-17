@@ -22,7 +22,11 @@ export class NotificationsGateway
   }
 
   sendNotificationToUser(userId: string, notification: any) {
-    // In a real app, users would join a room named with their userId
-    this.server.to(`user_${userId}`).emit('new_notification', notification);
+    try {
+      // In a real app, users would join a room named with their userId
+      this.server.to(`user_${userId}`).emit('new_notification', notification);
+    } catch (error) {
+      console.error('Failed to emit notification via socket:', error);
+    }
   }
 }

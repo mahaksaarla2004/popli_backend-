@@ -34,6 +34,33 @@ export class CreateStoryDto {
   repliesAllowed?: boolean;
 
   @ApiPropertyOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  mentionedUserIds?: string[];
+
+  @ApiPropertyOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @IsOptional()
+  mentionedUsernames?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  originalStoryId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  originalOwnerId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  originalOwnerUsername?: string;
+
+  @ApiPropertyOptional()
   @IsOptional()
   layersData?: any;
 }

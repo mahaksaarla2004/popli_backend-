@@ -76,6 +76,10 @@ export class CreateReelDto {
   @IsOptional()
   taggedUserIds?: string[];
 
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  challengeId?: string;
 }
 
 export class AddCommentDto {

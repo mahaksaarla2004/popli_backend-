@@ -32,13 +32,13 @@ export class KycService {
       where: { userId },
       update: {
         ...dto,
-        status: 'PENDING',
+        status: 'APPROVED',
         submittedAt: new Date(),
       },
       create: {
         userId,
         ...dto,
-        status: 'PENDING',
+        status: 'APPROVED',
       },
     });
   }

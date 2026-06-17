@@ -28,15 +28,29 @@ export class ReelsController {
   }
 
   @Get('feed')
-  @ApiOperation({ summary: 'Get global feed' })
+  @ApiOperation({ summary: 'Get global feed (chronological, cursor-based)' })
   getFeed(
+    @Query('cursor') cursor: string,
+    @Query('limit') limit: string,
+    @Query('category') category: string,
+  ) {
+    return this.reelsService.getFeed(
+      cursor,
+      Number(limit) || 10,
+      category
+    );
+  }
+
+  @Get('explore')
+  @ApiOperation({ summary: 'Get algorithmic explore feed' })
+  getExploreFeed(
     @Query('page') page: string,
     @Query('limit') limit: string,
     @Query('category') category: string,
     @Query('excludeIds') excludeIds: string,
   ) {
     const excludeIdsArray = excludeIds ? excludeIds.split(',').filter(id => id.length > 0) : [];
-    return this.reelsService.getFeed(
+    return this.reelsService.getExploreFeed(
       Number(page) || 1,
       Number(limit) || 10,
       category,
@@ -128,9 +142,13 @@ export class ReelsController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Register a view on a reel' })
-  registerView(@Param('id') reelId: string, @Req() req: any) {
-    // If the user is authenticated, log to watch history.
-    return this.reelsService.incrementView(reelId, req.user?.id);
+  registerView(
+    @Param('id') reelId: string, 
+    @Req() req: any,
+    @Body() body: { deviceId?: string; sessionId?: string; watchDuration?: number; completionPercent?: number }
+  ) {
+    const ipHash = req.ip || req.headers['x-forwarded-for'];
+    return this.reelsService.incrementView(reelId, req.user?.id, { ...body, ipHash });
   }
 
   @Get(':id')

@@ -103,21 +103,28 @@ export class AdminController {
     return this.adminService.getTickets(req.user.id);
   }
 
-  // Transactions
-  @Post('transactions/:id/approve')
+  @Get('withdrawals')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Approve a withdrawal transaction' })
-  approveTransaction(@Param('id') txId: string, @Req() req: any) {
-    return this.adminService.approveTransaction(txId, req.user.id);
+  @ApiOperation({ summary: 'Get all withdrawal requests' })
+  getWithdrawals(@Req() req: any) {
+    return this.adminService.getWithdrawals(req.user.id);
   }
 
-  @Post('transactions/:id/reject')
+  @Post('withdrawals/:id/approve')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Reject a withdrawal transaction' })
-  rejectTransaction(@Param('id') txId: string, @Req() req: any) {
-    return this.adminService.rejectTransaction(txId, req.user.id);
+  @ApiOperation({ summary: 'Approve a withdrawal request' })
+  approveWithdrawal(@Param('id') reqId: string, @Req() req: any) {
+    return this.adminService.approveWithdrawal(reqId, req.user.id);
+  }
+
+  @Post('withdrawals/:id/reject')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Reject a withdrawal request' })
+  rejectWithdrawal(@Param('id') reqId: string, @Body('reason') reason: string, @Req() req: any) {
+    return this.adminService.rejectWithdrawal(reqId, req.user.id, reason);
   }
 
   // Gifts
@@ -143,5 +150,22 @@ export class AdminController {
   @ApiOperation({ summary: 'Delete a premium gift' })
   deleteGift(@Param('id') giftId: string, @Req() req: any) {
     return this.adminService.deleteGift(giftId, req.user.id);
+  }
+
+  // System Configs
+  @Get('configs')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get all system configs' })
+  getConfigs(@Req() req: any) {
+    return this.adminService.getConfigs(req.user.id);
+  }
+
+  @Post('configs')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update a system config' })
+  updateConfig(@Body() body: { key: string, value: any }, @Req() req: any) {
+    return this.adminService.updateConfig(body.key, body.value, req.user.id);
   }
 }

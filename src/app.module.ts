@@ -22,6 +22,8 @@ import { AnalyticsModule } from './analytics/analytics.module';
 import { SearchModule } from './search/search.module';
 import { InterestsModule } from './interests/interests.module';
 import { ChallengesModule } from './challenges/challenges.module';
+import { HashtagsModule } from './hashtags/hashtags.module';
+import { SystemModule } from './system/system.module';
 
 @Module({
   imports: [
@@ -51,6 +53,8 @@ import { ChallengesModule } from './challenges/challenges.module';
     SearchModule,
     InterestsModule,
     ChallengesModule,
+    HashtagsModule,
+    SystemModule,
   ],
   controllers: [AppController],
   providers: [AppService],

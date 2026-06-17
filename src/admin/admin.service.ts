@@ -6,6 +6,7 @@ import {
 import { PrismaService } from '../prisma/prisma.service';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
+import { checkAndProcessReferral } from '../utils/referral.util';
 
 @Injectable()
 export class AdminService {
@@ -105,6 +106,10 @@ export class AdminService {
       data: { isVerified: true, role: 'CREATOR' },
     });
 
+    checkAndProcessReferral(this.prisma, kyc.userId).catch(err => {
+      console.error('Referral process error on KYC approval', err);
+    });
+
     return { message: 'KYC Approved successfully' };
   }
 
@@ -192,44 +197,106 @@ export class AdminService {
   }
 
   // Transactions & Withdrawals
-  async approveTransaction(txId: string, adminId: string) {
+  async getWithdrawals(adminId: string) {
     const admin = await this.prisma.user.findUnique({ where: { id: adminId } });
     if (!admin || admin.role !== 'ADMIN')
       throw new UnauthorizedException('Not authorized');
-
-    return this.prisma.transaction.update({
-      where: { id: txId },
-      data: { status: 'SUCCESS' },
+    
+    return this.prisma.withdrawalRequest.findMany({
+      include: {
+        wallet: {
+          include: { user: { select: { username: true, name: true } } },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
-  async rejectTransaction(txId: string, adminId: string) {
+  async approveWithdrawal(reqId: string, adminId: string) {
     const admin = await this.prisma.user.findUnique({ where: { id: adminId } });
     if (!admin || admin.role !== 'ADMIN')
       throw new UnauthorizedException('Not authorized');
 
     return this.prisma.$transaction(async (tx) => {
-      const transaction = await tx.transaction.findUnique({
-        where: { id: txId },
-      });
-      if (!transaction || transaction.status !== 'PENDING') {
-        throw new BadRequestException(
-          'Transaction not found or already processed',
-        );
+      const request = await tx.withdrawalRequest.findUnique({ where: { id: reqId } });
+      if (!request || request.status !== 'PENDING') {
+        throw new BadRequestException('Request not found or already processed');
       }
 
-      // If it's a withdrawal in INR, refund the INR earnings to wallet
-      if (transaction.type === 'WITHDRAWAL' && transaction.currency === 'INR') {
-        await tx.wallet.update({
-          where: { id: transaction.walletId },
-          data: { inrEarnings: { increment: transaction.amount } },
-        });
+      const updated = await tx.withdrawalRequest.update({
+        where: { id: reqId },
+        data: { status: 'APPROVED' },
+      });
+
+      await tx.wallet.update({
+        where: { id: request.walletId },
+        data: { totalWithdrawn: { increment: request.amount } }
+      });
+
+      // Audit Log
+      await tx.auditLog.create({
+        data: {
+          actorId: adminId,
+          action: 'WITHDRAWAL_APPROVED',
+          entityType: 'WithdrawalRequest',
+          entityId: reqId,
+          newValue: { status: 'APPROVED' }
+        }
+      });
+
+      return updated;
+    });
+  }
+
+  async rejectWithdrawal(reqId: string, adminId: string, reason: string = 'Rejected by Admin') {
+    const admin = await this.prisma.user.findUnique({ where: { id: adminId } });
+    if (!admin || admin.role !== 'ADMIN')
+      throw new UnauthorizedException('Not authorized');
+
+    return this.prisma.$transaction(async (tx) => {
+      const request = await tx.withdrawalRequest.findUnique({
+        where: { id: reqId },
+      });
+      if (!request || request.status !== 'PENDING') {
+        throw new BadRequestException('Request not found or already processed');
       }
 
-      return tx.transaction.update({
-        where: { id: txId },
-        data: { status: 'FAILED' },
+      // Refund the gross amount to withdrawableBalance
+      const wallet = await tx.wallet.update({
+        where: { id: request.walletId },
+        data: { withdrawableBalance: { increment: request.amount } },
       });
+
+      // Create Ledger Entry for Rollback
+      await tx.walletLedger.create({
+        data: {
+          userId: wallet.userId,
+          walletId: wallet.id,
+          source: 'FRAUD_REVERSAL',
+          sourceId: request.id,
+          credit: request.amount,
+          balanceAfter: wallet.withdrawableBalance,
+          description: `Withdrawal rejected and refunded: ${reason}`
+        }
+      });
+
+      const updated = await tx.withdrawalRequest.update({
+        where: { id: reqId },
+        data: { status: 'REJECTED' },
+      });
+
+      // Audit Log
+      await tx.auditLog.create({
+        data: {
+          actorId: adminId,
+          action: 'WITHDRAWAL_REJECTED',
+          entityType: 'WithdrawalRequest',
+          entityId: reqId,
+          newValue: { status: 'REJECTED', reason }
+        }
+      });
+
+      return updated;
     });
   }
 
@@ -262,6 +329,32 @@ export class AdminService {
 
     return this.prisma.gift.delete({
       where: { id: giftId },
+    });
+  }
+
+  // System Configs
+  async getConfigs(adminId: string) {
+    const admin = await this.prisma.user.findUnique({ where: { id: adminId } });
+    if (!admin || admin.role !== 'ADMIN')
+      throw new UnauthorizedException('Not authorized');
+      
+    const configs = await this.prisma.systemConfig.findMany();
+    const result: Record<string, any> = {};
+    configs.forEach(c => {
+      result[c.key] = c.valueJson;
+    });
+    return result;
+  }
+
+  async updateConfig(key: string, value: any, adminId: string) {
+    const admin = await this.prisma.user.findUnique({ where: { id: adminId } });
+    if (!admin || admin.role !== 'ADMIN')
+      throw new UnauthorizedException('Not authorized');
+
+    return this.prisma.systemConfig.upsert({
+      where: { key },
+      update: { valueJson: value, updatedBy: adminId },
+      create: { key, valueJson: value, updatedBy: adminId },
     });
   }
 }

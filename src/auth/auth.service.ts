@@ -104,24 +104,7 @@ export class AuthService {
         
         if (referrer) {
           referredById = referrer.id;
-          // Credit referrer's wallet with ₹10
-          const referrerWallet = await this.prisma.wallet.findUnique({ where: { userId: referrer.id } });
-          if (referrerWallet) {
-            await this.prisma.wallet.update({
-              where: { userId: referrer.id },
-              data: { inrEarnings: { increment: 10 } }
-            });
-            await this.prisma.transaction.create({
-              data: {
-                walletId: referrerWallet.id,
-                type: 'REFERRAL_BONUS',
-                amount: 10,
-                currency: 'INR',
-                status: 'SUCCESS',
-                description: 'Referral Bonus for a new user signup'
-              }
-            });
-          }
+          // Rewards are issued via checkAndProcessReferral later upon KYC and first post
         }
       }
 
@@ -144,6 +127,17 @@ export class AuthService {
       // create default wallet and preferences
       await this.prisma.wallet.create({ data: { userId: user.id } });
       await this.prisma.userPreference.create({ data: { userId: user.id } });
+
+      // Create Referral Tracker
+      if (referredById) {
+        await this.prisma.referralTracker.create({
+          data: {
+            referrerId: referredById,
+            referredId: user.id,
+            status: 'PENDING'
+          }
+        });
+      }
     }
 
     if (!user) {

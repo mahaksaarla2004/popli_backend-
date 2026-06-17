@@ -2,8 +2,11 @@ import {
   Injectable,
   NotFoundException,
   UnauthorizedException,
+  Optional
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationsGateway } from '../notifications/notifications.gateway';
+import { ChatGateway } from '../chat/chat.gateway';
 import {
   CreateStoryDto,
   ReactStoryDto,
@@ -12,7 +15,11 @@ import {
 
 @Injectable()
 export class StoriesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Optional() private notificationsGateway?: NotificationsGateway,
+    @Optional() private chatGateway?: ChatGateway
+  ) {}
 
   async createStory(creatorId: string, dto: CreateStoryDto) {
     // Expires in 24 hours
@@ -25,15 +32,58 @@ export class StoriesService {
       } catch (e) {}
     }
 
+    let rootOriginalStoryId = dto.originalStoryId || null;
+    let rootOriginalOwnerId = dto.originalOwnerId || null;
+    let rootOriginalOwnerUsername = dto.originalOwnerUsername || null;
+
+    if (dto.originalStoryId) {
+      // 1. Verify original story exists, not expired
+      const originalStory = await this.prisma.story.findUnique({
+        where: { id: dto.originalStoryId },
+        include: { creator: true }
+      });
+
+      if (!originalStory) {
+        throw new NotFoundException('Original story not found or has been deleted');
+      }
+
+      if (new Date() > originalStory.expiresAt) {
+        throw new UnauthorizedException('Original story has expired and cannot be shared');
+      }
+
+      // Permissions check: Since sharing is triggered from mentions, and we don't have sharesAllowed natively, we just rely on the API unless isCloseFriends blocks it
+      if (originalStory.isCloseFriends) {
+         throw new UnauthorizedException('Cannot reshare a Close Friends story');
+      }
+
+      // Reshare Loop Protection: Always point to root original story
+      if (originalStory.originalStoryId) {
+        rootOriginalStoryId = originalStory.originalStoryId;
+        rootOriginalOwnerId = originalStory.originalOwnerId;
+        rootOriginalOwnerUsername = originalStory.originalOwnerUsername;
+      } else {
+        rootOriginalStoryId = originalStory.id;
+        rootOriginalOwnerId = originalStory.creatorId;
+        rootOriginalOwnerUsername = originalStory.creator.username;
+      }
+    }
+
     // Create the story and archive it immediately since we don't have a cron job
     const [story, archive] = await this.prisma.$transaction([
       this.prisma.story.create({
         data: {
-          ...dto,
+          mediaUrl: dto.mediaUrl,
+          mediaType: dto.mediaType,
+          isCloseFriends: dto.isCloseFriends,
+          repliesAllowed: dto.repliesAllowed,
           layersData,
           creatorId,
           expiresAt,
+          originalStoryId: rootOriginalStoryId,
+          originalOwnerId: rootOriginalOwnerId,
+          originalOwnerUsername: rootOriginalOwnerUsername,
         },
+        include: { creator: { select: { id: true, username: true, avatar: true, name: true } } }
       }),
       this.prisma.storyArchive.create({
         data: {
@@ -41,11 +91,127 @@ export class StoriesService {
           mediaUrl: dto.mediaUrl,
           mediaType: dto.mediaType,
           createdAt: new Date(),
+          originalStoryId: rootOriginalStoryId,
+          originalOwnerId: rootOriginalOwnerId,
+          originalOwnerUsername: rootOriginalOwnerUsername,
         },
       }),
     ]);
 
+    // Handle Mentions Async without blocking
+    let finalMentionUserIds = dto.mentionedUserIds ? [...dto.mentionedUserIds] : [];
+    if (rootOriginalOwnerId && rootOriginalOwnerId !== creatorId) {
+      if (!finalMentionUserIds.includes(rootOriginalOwnerId)) {
+        finalMentionUserIds.push(rootOriginalOwnerId);
+      }
+    }
+
+    if ((dto.mentionedUsernames && dto.mentionedUsernames.length > 0) || finalMentionUserIds.length > 0) {
+      this.processStoryMentions(story, creatorId, dto.mentionedUsernames, finalMentionUserIds).catch(err => {
+        console.error('Failed to process story mentions:', err);
+      });
+    }
+
     return story;
+  }
+
+  private async processStoryMentions(story: any, creatorId: string, usernames?: string[], userIds?: string[]) {
+    try {
+      // Find valid users matching either ID or Username
+      const validUsers = await this.prisma.user.findMany({
+        where: {
+          OR: [
+            { id: { in: userIds || [] } },
+            { username: { in: usernames || [] } }
+          ]
+        },
+        select: { id: true, username: true }
+      });
+
+      // Filter out duplicates and self-mentions
+      const uniqueValidUserIds = Array.from(new Set(validUsers.map(u => u.id))).filter(id => id !== creatorId);
+
+      for (const mentionedUserId of uniqueValidUserIds) {
+        // Wrap each user process in its own try/catch to isolate failures
+        try {
+          // 1. Create Notification
+          const notification = await this.prisma.notification.create({
+            data: {
+              userId: mentionedUserId,
+              senderId: creatorId,
+              senderAvatar: story.creator.avatar,
+              type: 'STORY_MENTION' as any,
+              postId: story.id, // Store story ID here
+              title: 'Story Mention',
+              body: `@${story.creator.username} mentioned you in their story.`,
+            }
+          });
+
+          // 2. Emit Notification via Gateway (Optional chaining to avoid crashes if gateway is missing)
+          if (this.notificationsGateway) {
+            this.notificationsGateway.sendNotificationToUser(mentionedUserId, {
+              ...notification,
+              senderName: story.creator.name || story.creator.username,
+            });
+          }
+
+          // 3. Find or Create Chat
+          let chat = await this.prisma.chat.findFirst({
+            where: {
+              AND: [
+                { participants: { some: { userId: creatorId } } },
+                { participants: { some: { userId: mentionedUserId } } },
+                { isGroup: false }
+              ]
+            }
+          });
+
+          if (!chat) {
+            chat = await this.prisma.chat.create({
+              data: {
+                isGroup: false,
+                participants: { 
+                  create: [{ userId: creatorId }, { userId: mentionedUserId }] 
+                }
+              }
+            });
+          }
+
+          // 4. Create DM Card Message
+          const message = await this.prisma.message.create({
+            data: {
+              chatId: chat.id,
+              senderId: creatorId,
+              type: 'STORY_MENTION' as any,
+              storyId: story.id,
+              text: 'Mentioned you in their story',
+            },
+            include: { sender: { select: { id: true, username: true, avatar: true, name: true } } }
+          });
+
+          // Update Chat
+          await this.prisma.chat.update({
+            where: { id: chat.id },
+            data: { lastMessage: 'Mentioned you in their story', lastMessageAt: new Date() }
+          });
+
+          await this.prisma.chatParticipant.updateMany({
+            where: { chatId: chat.id, userId: mentionedUserId },
+            data: { unreadCount: { increment: 1 } }
+          });
+
+          // 5. Emit Message via ChatGateway
+          if (this.chatGateway) {
+            this.chatGateway.server.to(chat.id).emit('new_message', message);
+          }
+
+        } catch (innerErr) {
+          console.error(`Failed to process mention for user ${mentionedUserId}:`, innerErr);
+        }
+      }
+    } catch (e) {
+      console.error('Outer mention processing failed:', e);
+    }
   }
 
   async getActiveStories(userId: string) {

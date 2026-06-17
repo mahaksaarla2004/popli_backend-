@@ -32,6 +32,6 @@ export class WalletController {
   @Post('test/trigger-hourly-earnings')
   @ApiOperation({ summary: 'TEST ONLY: Manually trigger hourly earning calculation' })
   triggerHourlyEarnings() {
-    return this.walletService.calculateHourlyEarnings();
+    return this.walletService.processViewEarnings();
   }
 }

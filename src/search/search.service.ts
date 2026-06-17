@@ -6,11 +6,13 @@ export class SearchService {
   constructor(private prisma: PrismaService) {}
 
   async searchAll(query: string) {
+    const cleanQuery = query.replace('#', '');
+    
     const users = await this.prisma.user.findMany({
       where: {
         OR: [
-          { username: { contains: query, mode: 'insensitive' } },
-          { name: { contains: query, mode: 'insensitive' } },
+          { username: { contains: cleanQuery, mode: 'insensitive' } },
+          { name: { contains: cleanQuery, mode: 'insensitive' } },
         ],
       },
       take: 10,
@@ -23,11 +25,20 @@ export class SearchService {
       },
     });
 
+    const hashtags = await this.prisma.hashtag.findMany({
+      where: {
+        name: { contains: cleanQuery, mode: 'insensitive' }
+      },
+      take: 10,
+      orderBy: { usageCount: 'desc' }
+    });
+
     const reels = await this.prisma.reel.findMany({
       where: {
         OR: [
-          { description: { contains: query, mode: 'insensitive' } },
-          { category: { contains: query, mode: 'insensitive' } },
+          { description: { contains: cleanQuery, mode: 'insensitive' } },
+          { category: { contains: cleanQuery, mode: 'insensitive' } },
+          { hashtags: { some: { hashtag: { name: { contains: cleanQuery, mode: 'insensitive' } } } } }
         ],
       },
       take: 10,
@@ -36,6 +47,6 @@ export class SearchService {
       },
     });
 
-    return { users, reels };
+    return { users, reels, hashtags };
   }
 }

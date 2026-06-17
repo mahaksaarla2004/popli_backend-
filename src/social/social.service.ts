@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
+import { NotificationType } from '@prisma/client';
 
 @Injectable()
 export class SocialService {
@@ -46,7 +47,7 @@ export class SocialService {
         await this.prisma.notification.create({
           data: {
             userId: followingId,
-            type: 'follow',
+            type: NotificationType.FOLLOW,
             title: 'New Follower',
             body: `${follower.name} started following you.`,
             senderId: followerId,
