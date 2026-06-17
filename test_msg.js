@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function run() { const msgs = await prisma.message.findMany({ where: { type: 'STORY_MENTION' }, orderBy: { createdAt: 'desc' }, take: 2 }); console.log(JSON.stringify(msgs, null, 2)); prisma.$disconnect(); } run();

@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function run() { const stories = await prisma.story.findMany({ orderBy: { createdAt: 'desc' }, take: 5, include: { creator: true } }); console.log(JSON.stringify(stories, null, 2)); prisma.$disconnect(); } run();

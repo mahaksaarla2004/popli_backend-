@@ -8,3 +8,5 @@ npm-debug.log
 yarn-error.log
 .idea/
 .vscode/
+cloudflared.exe
+tunnel.log

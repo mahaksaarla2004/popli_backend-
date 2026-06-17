@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function run() { const reels = await prisma.reel.findMany({ select: { id: true, mediaUrl: true } }); console.log(JSON.stringify(reels, null, 2)); prisma.$disconnect(); } run();

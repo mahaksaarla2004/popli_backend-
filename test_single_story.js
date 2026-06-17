@@ -1,0 +1,1 @@
+const { PrismaClient } = require('@prisma/client'); const prisma = new PrismaClient(); async function run() { const story = await prisma.story.findUnique({ where: { id: '60ea559d-4ca9-4707-8c11-bfeb34b439c2' } }); console.log(JSON.stringify(story, null, 2)); prisma.$disconnect(); } run();
