@@ -153,8 +153,11 @@ model Reel {
   updatedAt               DateTime           @updatedAt
   layersData              Json?
   pendingEarningsViews    Int                @default(0)
-  privacy                 String             @default("Everyone")
+  privacy                 String             @default("Public")
   isMonetized             Boolean            @default(true)
+  allowComments           Boolean            @default(true)
+  allowDuet               Boolean            @default(true)
+  allowGifting            Boolean            @default(true)
   comments                Comment[]
   likes                   Like[]
   creator                 User               @relation("CreatorReels", fields: [creatorId], references: [id], onDelete: Cascade)

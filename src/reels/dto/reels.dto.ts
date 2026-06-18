@@ -69,6 +69,21 @@ export class CreateReelDto {
   isMonetized?: boolean;
 
   @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  allowComments?: boolean;
+
+  @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  allowDuet?: boolean;
+
+  @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  allowGifting?: boolean;
+
+  @ApiPropertyOptional()
   @IsOptional()
   layersData?: any;
 

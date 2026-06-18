@@ -119,6 +119,22 @@ export class ChatService {
     });
   }
 
+  async markMessageRead(chatId: string, messageId: string, userId: string) {
+    const message = await this.prisma.message.findUnique({ where: { id: messageId } });
+    if (!message) throw new NotFoundException('Message not found');
+    if (message.chatId !== chatId) throw new Error('Message does not belong to this chat');
+
+    // We only update if the current user is NOT the sender (i.e. they are the receiver reading it)
+    if (message.senderId !== userId && message.status !== 'read') {
+      return this.prisma.message.update({
+        where: { id: messageId },
+        data: { status: 'read' },
+      });
+    }
+    
+    return message;
+  }
+
   async deleteChat(chatId: string, userId: string) {
     const participant = await this.prisma.chatParticipant.findUnique({
       where: { chatId_userId: { chatId, userId } }

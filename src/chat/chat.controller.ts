@@ -54,6 +54,12 @@ export class ChatController {
     return this.chatService.markRead(chatId, req.user.id);
   }
 
+  @Post(':id/messages/:messageId/read')
+  @ApiOperation({ summary: 'Mark specific message as read' })
+  markMessageRead(@Param('id') chatId: string, @Param('messageId') messageId: string, @Req() req: any) {
+    return this.chatService.markMessageRead(chatId, messageId, req.user.id);
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Delete a chat' })
   deleteChat(@Param('id') chatId: string, @Req() req: any) {

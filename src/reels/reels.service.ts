@@ -134,7 +134,10 @@ export class ReelsService {
   }
 
   async getFeed(cursor: string | null = null, limit: number = 10, category?: string) {
-    const where: any = category && category !== 'all' ? { category } : {};
+    const where: any = {
+      privacy: 'Public', // Only show public reels in the general feed
+      ...(category && category !== 'all' ? { category } : {})
+    };
     
     // Using Prisma cursor-based pagination
     const reels = await this.prisma.reel.findMany({
@@ -167,7 +170,10 @@ export class ReelsService {
   async getExploreFeed(page: number = 1, limit: number = 10, category?: string, excludeIds: string[] = []) {
     // We ignore skip (page) for the database query because we are randomizing
     // We fetch a larger pool (e.g., 50) of recent reels that haven't been seen yet
-    const where: any = category && category !== 'all' ? { category } : {};
+    const where: any = {
+      privacy: 'Public', // Only show public reels in explore
+      ...(category && category !== 'all' ? { category } : {})
+    };
     
     if (excludeIds.length > 0) {
       where.id = { notIn: excludeIds };
@@ -210,7 +216,10 @@ export class ReelsService {
     console.log(`[getFollowingFeed] User ${userId} follows:`, followingIds);
 
     const reels = await this.prisma.reel.findMany({
-      where: { creatorId: { in: followingIds } },
+      where: { 
+        creatorId: { in: followingIds },
+        privacy: { in: ['Public', 'Friends'] } // Following feed can show friends-only posts
+      },
       skip,
       take: limit,
       orderBy: { createdAt: 'desc' },
@@ -305,7 +314,7 @@ export class ReelsService {
       (6371 * acos(cos(radians(${lat})) * cos(radians(r.latitude)) * cos(radians(r.longitude) - radians(${lng})) + sin(radians(${lat})) * sin(radians(r.latitude)))) AS distance
       FROM "Reel" r
       JOIN "User" u ON r."creatorId" = u.id
-      WHERE r.latitude IS NOT NULL AND r.longitude IS NOT NULL
+      WHERE r.latitude IS NOT NULL AND r.longitude IS NOT NULL AND r.privacy = 'Public'
       HAVING (6371 * acos(cos(radians(${lat})) * cos(radians(r.latitude)) * cos(radians(r.longitude) - radians(${lng})) + sin(radians(${lat})) * sin(radians(r.latitude)))) < ${radiusKm}
       ORDER BY distance ASC
       LIMIT ${limit} OFFSET ${offset}
@@ -532,11 +541,14 @@ export class ReelsService {
     return comment;
   }
 
-  async getComments(reelId: string) {
-    return this.prisma.comment.findMany({
+  async getComments(reelId: string, userId: string) {
+    const comments = await this.prisma.comment.findMany({
       where: { reelId, parentId: null }, // Only fetch top-level comments
       orderBy: { createdAt: 'desc' },
       include: {
+        likes: {
+          where: { userId }
+        },
         user: {
           select: {
             id: true,
@@ -549,6 +561,9 @@ export class ReelsService {
         replies: {
           orderBy: { createdAt: 'asc' },
           include: {
+            likes: {
+              where: { userId }
+            },
             user: {
               select: {
                 id: true,
@@ -562,6 +577,19 @@ export class ReelsService {
         },
       },
     });
+
+    const mapCommentWithLike = (c: any) => ({
+      ...c,
+      isLiked: c.likes && c.likes.length > 0,
+      likes: undefined, // remove from response
+      replies: c.replies ? c.replies.map((r: any) => ({
+        ...r,
+        isLiked: r.likes && r.likes.length > 0,
+        likes: undefined
+      })) : []
+    });
+
+    return comments.map(mapCommentWithLike);
   }
 
   async toggleCommentLike(commentId: string, userId: string) {

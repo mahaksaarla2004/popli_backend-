@@ -109,9 +109,11 @@ export class ReelsController {
   }
 
   @Get(':id/comments')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
   @ApiOperation({ summary: 'Get comments for a reel' })
-  getComments(@Param('id') reelId: string) {
-    return this.reelsService.getComments(reelId);
+  getComments(@Param('id') reelId: string, @Req() req: any) {
+    return this.reelsService.getComments(reelId, req.user.id);
   }
 
   @Post('comments/:commentId/like')
