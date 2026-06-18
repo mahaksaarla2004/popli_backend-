@@ -1,10 +1,15 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SendMessageDto } from './dto/chat.dto';
+import { ChatGateway } from './chat.gateway';
 
 @Injectable()
 export class ChatService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    @Inject(forwardRef(() => ChatGateway))
+    private chatGateway: ChatGateway,
+  ) {}
 
   async getChats(userId: string) {
     return this.prisma.chatParticipant.findMany({
@@ -107,6 +112,10 @@ export class ChatService {
       data: { unreadCount: { increment: 1 } },
     });
 
+    if (this.chatGateway) {
+      this.chatGateway.broadcastMessage(chatId, message);
+    }
+
     return message;
   }
 
@@ -153,5 +162,26 @@ export class ChatService {
     }
     
     return this.prisma.message.delete({ where: { id: messageId } });
+  }
+
+  async reactToMessage(chatId: string, messageId: string, userId: string, emoji: string | null) {
+    const message = await this.prisma.message.findUnique({ where: { id: messageId } });
+    if (!message) throw new NotFoundException('Message not found');
+    
+    let reactions: Record<string, string> = {};
+    if (message.reactions && typeof message.reactions === 'object') {
+      reactions = { ...(message.reactions as Record<string, string>) };
+    }
+    
+    if (emoji) {
+      reactions[userId] = emoji;
+    } else {
+      delete reactions[userId];
+    }
+    
+    return this.prisma.message.update({
+      where: { id: messageId },
+      data: { reactions },
+    });
   }
 }

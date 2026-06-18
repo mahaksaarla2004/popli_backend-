@@ -29,14 +29,9 @@ export class AuthService {
   ) {
     let phone: string | undefined;
 
-    if (dto.idToken.startsWith('MOCK_TOKEN_')) {
-      // Mock logic for local testing without Firebase SHA-1 setup
-      phone = dto.idToken.replace('MOCK_TOKEN_', '');
-    } else {
-      // Real Firebase verification
-      const decodedToken = await this.firebaseAdmin.verifyIdToken(dto.idToken);
-      phone = decodedToken.phone_number;
-    }
+    // Real Firebase verification
+    const decodedToken = await this.firebaseAdmin.verifyIdToken(dto.idToken);
+    phone = decodedToken.phone_number;
 
     if (!phone) {
       throw new BadRequestException(

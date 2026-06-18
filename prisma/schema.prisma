@@ -343,6 +343,7 @@ model Message {
   createdAt DateTime    @default(now())
   storyId   String?
   type      MessageType @default(TEXT)
+  reactions Json?       @default("{}")
   chat      Chat        @relation(fields: [chatId], references: [id], onDelete: Cascade)
   sender    User        @relation(fields: [senderId], references: [id], onDelete: Cascade)
 

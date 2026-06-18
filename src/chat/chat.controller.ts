@@ -71,4 +71,15 @@ export class ChatController {
   deleteMessage(@Param('id') chatId: string, @Param('messageId') messageId: string, @Req() req: any) {
     return this.chatService.deleteMessage(chatId, messageId, req.user.id);
   }
+
+  @Post(':id/messages/:messageId/react')
+  @ApiOperation({ summary: 'React to a message' })
+  reactToMessage(
+    @Param('id') chatId: string,
+    @Param('messageId') messageId: string,
+    @Req() req: any,
+    @Body('emoji') emoji: string | null,
+  ) {
+    return this.chatService.reactToMessage(chatId, messageId, req.user.id, emoji);
+  }
 }

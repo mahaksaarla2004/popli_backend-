@@ -135,7 +135,7 @@ export class ReelsService {
 
   async getFeed(cursor: string | null = null, limit: number = 10, category?: string) {
     const where: any = {
-      privacy: 'Public', // Only show public reels in the general feed
+      privacy: { in: ['Public', 'Everyone'] }, // Show public reels in the general feed
       ...(category && category !== 'all' ? { category } : {})
     };
     
@@ -171,7 +171,7 @@ export class ReelsService {
     // We ignore skip (page) for the database query because we are randomizing
     // We fetch a larger pool (e.g., 50) of recent reels that haven't been seen yet
     const where: any = {
-      privacy: 'Public', // Only show public reels in explore
+      privacy: { in: ['Public', 'Everyone'] }, // Show public reels in explore
       ...(category && category !== 'all' ? { category } : {})
     };
     
