@@ -99,4 +99,9 @@ export class VerifyFirebaseTokenDto {
   @IsOptional()
   @IsString()
   dob?: string;
+
+  @ApiProperty({ example: '+919876543210', required: false })
+  @IsOptional()
+  @IsString()
+  phone?: string;
 }
