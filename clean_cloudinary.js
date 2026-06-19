@@ -8,27 +8,11 @@ cloudinary.config({
 
 async function deleteAll() {
   try {
-    console.log('Fetching image resources...');
-    let result = await cloudinary.api.resources({ type: 'upload', max_results: 500, resource_type: 'image' });
-    let images = result.resources.map(r => r.public_id);
-    
-    if (images.length > 0) {
-      console.log(`Deleting ${images.length} images...`);
-      await cloudinary.api.delete_resources(images, { resource_type: 'image' });
-    } else {
-      console.log('No images found.');
-    }
+    console.log('Deleting all image resources...');
+    await cloudinary.api.delete_all_resources({ resource_type: 'image' });
 
-    console.log('Fetching video resources...');
-    result = await cloudinary.api.resources({ type: 'upload', max_results: 500, resource_type: 'video' });
-    let videos = result.resources.map(r => r.public_id);
-    
-    if (videos.length > 0) {
-      console.log(`Deleting ${videos.length} videos...`);
-      await cloudinary.api.delete_resources(videos, { resource_type: 'video' });
-    } else {
-      console.log('No videos found.');
-    }
+    console.log('Deleting all video resources...');
+    await cloudinary.api.delete_all_resources({ resource_type: 'video' });
 
     console.log('Cleanup completed successfully.');
   } catch (error) {
