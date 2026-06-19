@@ -187,7 +187,6 @@ export class AuthService {
     const payload = { sub: user.id, role: user.role };
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
-    const bcrypt = require('bcryptjs');
     const tokenHash = await bcrypt.hash(refreshToken, 10);
     
     await this.prisma.session.create({
