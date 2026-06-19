@@ -167,6 +167,53 @@ export class AuthService {
     };
   }
 
+  async demoLogin(phone: string, ip: string, userAgent: string) {
+    if (!phone) throw new BadRequestException('Phone is required');
+    let user = await this.prisma.user.findFirst({ where: { phone } });
+    if (!user) {
+      const finalUsername = 'user_' + Math.random().toString(36).substring(2, 10);
+      user = await this.prisma.user.create({
+        data: {
+          phone,
+          username: finalUsername,
+          name: 'Demo User',
+          isProfileComplete: false,
+        },
+      });
+      await this.prisma.wallet.create({ data: { userId: user.id } });
+      await this.prisma.userPreference.create({ data: { userId: user.id } });
+    }
+    
+    const payload = { sub: user.id, role: user.role };
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+    const bcrypt = require('bcryptjs');
+    const tokenHash = await bcrypt.hash(refreshToken, 10);
+    
+    await this.prisma.session.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        ipAddress: ip,
+        deviceInfo: userAgent,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+      },
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        avatar: user.avatar,
+        role: user.role,
+        isProfileComplete: user.isProfileComplete,
+      },
+    };
+  }
+
   async checkUser(dto: any) {
     if (dto.identifier) {
       // If it's a 10-digit number without country code, also check for +91

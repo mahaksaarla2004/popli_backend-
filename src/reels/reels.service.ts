@@ -417,11 +417,19 @@ export class ReelsService {
       });
       return { saved: false };
     } else {
-      await this.prisma.save.create({ data: { reelId, userId } });
-      await this.prisma.reel.update({
-        where: { id: reelId },
-        data: { savesCount: { increment: 1 } },
-      });
+      try {
+        await this.prisma.save.create({ data: { reelId, userId } });
+        await this.prisma.reel.update({
+          where: { id: reelId },
+          data: { savesCount: { increment: 1 } },
+        });
+      } catch (error: any) {
+        if (error.code === 'P2002') {
+          console.warn('Save already exists (concurrent request caught).');
+        } else {
+          throw error;
+        }
+      }
       return { saved: true };
     }
   }

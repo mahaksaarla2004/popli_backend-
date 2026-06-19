@@ -59,6 +59,24 @@ export class AuthController {
     }
   }
 
+  @Post('demo-login')
+  @ApiOperation({ summary: 'Bypass Firebase for client demo' })
+  @HttpCode(HttpStatus.OK)
+  async demoLogin(@Body() dto: { phone: string, otp: string }, @Req() req: any, @Res() res: any) {
+    if (dto.otp !== '1234') {
+      return res.status(HttpStatus.BAD_REQUEST).json({ message: 'Invalid OTP' });
+    }
+    const ip = req.ip || '';
+    const userAgent = req.headers['user-agent'] || '';
+    try {
+      const result = await this.authService.demoLogin(dto.phone, ip, userAgent);
+      return res.status(HttpStatus.OK).json(result);
+    } catch (error: any) {
+      console.error('DEMO LOGIN ERROR:', error);
+      return res.status(error.status || 500).json({ message: error.message });
+    }
+  }
+
   @Post('check-user')
   @ApiOperation({ summary: 'Check if user exists and if profile is complete' })
   @HttpCode(HttpStatus.OK)
