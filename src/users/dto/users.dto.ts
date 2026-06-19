@@ -61,6 +61,12 @@ export class UpdateProfileDto {
   @ApiPropertyOptional()
   @IsArray()
   @IsOptional()
+  @IsString({ each: true })
+  interestNames?: string[];
+
+  @ApiPropertyOptional()
+  @IsArray()
+  @IsOptional()
   socialLinks?: any[];
 
   @ApiPropertyOptional()
