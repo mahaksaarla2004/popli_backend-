@@ -104,13 +104,12 @@ export class UsersService {
 
     // Check completion criteria
     if (!updatedUser.isProfileComplete) {
-      // Must have name, username, dob, and at least 1 interest
+      // Must have name, username, and at least 1 interest
       if (
         updatedUser.name &&
         updatedUser.name !== 'Popli User' &&
         updatedUser.username &&
         !updatedUser.username.startsWith('user_') &&
-        updatedUser.dob &&
         updatedUser.interests.length > 0
       ) {
         return this.prisma.user.update({
