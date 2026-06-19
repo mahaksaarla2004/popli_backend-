@@ -54,8 +54,14 @@ export class UsersService {
       }
     }
 
-    // Uniqueness checks
+    // Uniqueness and Reserved Word checks
     if (dto.username) {
+      dto.username = dto.username.toLowerCase();
+      const reservedUsernames = ['admin', 'support', 'official', 'popli', 'team', 'help', 'security', 'moderator', 'root', 'system'];
+      if (reservedUsernames.includes(dto.username)) {
+        throw new BadRequestException('This username is reserved and cannot be claimed.');
+      }
+
       const existing = await this.prisma.user.findFirst({
         where: { username: dto.username, id: { not: userId } },
       });

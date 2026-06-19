@@ -53,16 +53,8 @@ export class AuthService {
       );
     }
 
-    if (dto.intent === 'login') {
-      if (!user) {
-        throw new UnauthorizedException('No account found. Please sign up first.');
-      }
-    } else if (dto.intent === 'signup') {
-      if (user) {
-        throw new BadRequestException('Account already exists. Please log in.');
-      }
-
-      // Check username if provided
+    if (!user) {
+      // Auto-register new user
       let finalUsername = `user_${Date.now()}`;
       if (dto.username) {
         finalUsername = dto.username.toLowerCase();
@@ -103,11 +95,9 @@ export class AuthService {
         
         if (referrer) {
           referredById = referrer.id;
-          // Rewards are issued via checkAndProcessReferral later upon KYC and first post
         }
       }
 
-      // Register complete user
       const dobDate = dto.dob ? new Date(dto.dob.split('/').reverse().join('-')) : null;
 
       user = await this.prisma.user.create({
@@ -117,12 +107,13 @@ export class AuthService {
           username: finalUsername,
           name: dto.name || 'Popli User',
           dob: dobDate,
-          isProfileComplete: true, // We have all fields now
+          isProfileComplete: false, // Force them to complete profile
           deviceId: deviceIdToCheck,
           referralCode,
           referredById,
         },
       });
+
       // create default wallet and preferences
       await this.prisma.wallet.create({ data: { userId: user.id } });
       await this.prisma.userPreference.create({ data: { userId: user.id } });
