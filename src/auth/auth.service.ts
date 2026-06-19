@@ -262,6 +262,7 @@ export class AuthService {
           exists: true,
           field: 'username',
           message: 'Username is already taken.',
+          userId: user.id,
         };
       }
     }
