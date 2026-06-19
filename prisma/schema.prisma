@@ -40,6 +40,7 @@ model User {
   blockedBy                   Block[]                      @relation("Blocked")
   blocking                    Block[]                      @relation("Blocker")
   challengeParticipations     ChallengeParticipant[]
+  challengeRewardTransactions ChallengeRewardTransaction[]
   chatParticipations          ChatParticipant[]
   comments                    Comment[]
   commentLikes                CommentLike[]
@@ -57,8 +58,8 @@ model User {
   stories                     Story[]                      @relation("CreatorStories")
   archivedStories             StoryArchive[]               @relation("CreatorArchives")
   storyHighlights             StoryHighlight[]             @relation("CreatorHighlights")
-  storyReactions              StoryReaction[]
   storyInteractions           StoryInteraction[]
+  storyReactions              StoryReaction[]
   storyViews                  StoryViewer[]
   ticketsSubmitted            SupportTicket[]              @relation("TicketCreator")
   preferences                 UserPreference?
@@ -66,7 +67,6 @@ model User {
   watchHistory                WatchHistory[]
   interests                   Interest[]                   @relation("InterestToUser")
   taggedInReels               Reel[]                       @relation("ReelTaggedUsers")
-  challengeRewardTransactions ChallengeRewardTransaction[]
 }
 
 model Session {
@@ -155,22 +155,22 @@ model Reel {
   pendingEarningsViews    Int                @default(0)
   privacy                 String             @default("Public")
   isMonetized             Boolean            @default(true)
+  challengeId             String?
+  challengeApprovalStatus ReelApprovalStatus @default(APPROVED)
   allowComments           Boolean            @default(true)
   allowDuet               Boolean            @default(true)
   allowGifting            Boolean            @default(true)
   comments                Comment[]
   likes                   Like[]
+  challenge               Challenge?         @relation("ChallengeReels", fields: [challengeId], references: [id])
   creator                 User               @relation("CreatorReels", fields: [creatorId], references: [id], onDelete: Cascade)
+  hashtags                ReelHashtag[]
   reports                 Report[]           @relation("ReportedReel")
   saves                   Save[]
   shares                  Share[]
+  validViews              ValidView[]
   watchHistory            WatchHistory[]
   taggedUsers             User[]             @relation("ReelTaggedUsers")
-  hashtags                ReelHashtag[]
-  challengeId             String?
-  challenge               Challenge?         @relation("ChallengeReels", fields: [challengeId], references: [id])
-  challengeApprovalStatus ReelApprovalStatus @default(APPROVED)
-  validViews              ValidView[]
 }
 
 model Comment {
@@ -233,22 +233,22 @@ model Share {
 }
 
 model Story {
-  id                    String          @id @default(uuid())
+  id                    String             @id @default(uuid())
   creatorId             String
   mediaUrl              String
   mediaType             MediaType
-  isCloseFriends        Boolean         @default(false)
-  repliesAllowed        Boolean         @default(true)
+  isCloseFriends        Boolean            @default(false)
+  repliesAllowed        Boolean            @default(true)
   expiresAt             DateTime
-  createdAt             DateTime        @default(now())
+  createdAt             DateTime           @default(now())
   layersData            Json?
   originalOwnerId       String?
   originalOwnerUsername String?
   originalStoryId       String?
-  creator               User            @relation("CreatorStories", fields: [creatorId], references: [id], onDelete: Cascade)
+  creator               User               @relation("CreatorStories", fields: [creatorId], references: [id], onDelete: Cascade)
+  interactions          StoryInteraction[]
   reactions             StoryReaction[]
   viewers               StoryViewer[]
-  interactions          StoryInteraction[]
 }
 
 model StoryViewer {
@@ -273,15 +273,15 @@ model StoryReaction {
 }
 
 model StoryInteraction {
-  id          String   @id @default(uuid())
-  storyId     String
-  layerId     String   // The ID of the sticker layer (Poll, Question, AddYours)
-  userId      String
-  type        String   // "POLL_VOTE", "QUESTION_RESPONSE", "ADD_YOURS"
-  value       String   // Option index or text response
-  createdAt   DateTime @default(now())
-  story       Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  storyId   String
+  layerId   String
+  userId    String
+  type      String
+  value     String
+  createdAt DateTime @default(now())
+  story     Story    @relation(fields: [storyId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([storyId, layerId, userId])
 }
@@ -355,17 +355,17 @@ model Wallet {
   userId              String              @unique
   coinBalance         Int                 @default(0)
   inrEarnings         Float               @default(0.0)
-  pendingBalance      Float               @default(0.0)
-  approvedBalance     Float               @default(0.0)
-  withdrawableBalance Float               @default(0.0)
-  totalWithdrawn      Float               @default(0.0)
-  totalEarnings       Float               @default(0.0)
   createdAt           DateTime            @default(now())
   updatedAt           DateTime            @updatedAt
+  approvedBalance     Float               @default(0.0)
+  pendingBalance      Float               @default(0.0)
+  totalEarnings       Float               @default(0.0)
+  totalWithdrawn      Float               @default(0.0)
+  withdrawableBalance Float               @default(0.0)
   transactions        Transaction[]
+  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   ledgers             WalletLedger[]
   withdrawalRequests  WithdrawalRequest[]
-  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Transaction {
@@ -385,10 +385,10 @@ model Gift {
   id            String   @id @default(uuid())
   name          String
   costInCoins   Int      @default(0)
-  costInINR     Float    @default(0.0)
   iconUrl       String
   animationType String   @default("fly")
   createdAt     DateTime @default(now())
+  costInINR     Float    @default(0.0)
 }
 
 model Notification {
@@ -466,37 +466,34 @@ model Block {
 }
 
 model Challenge {
-  id                    String          @id @default(uuid())
+  id                    String                       @id @default(uuid())
   title                 String
   description           String?
-  hashtagName           String?
-  bannerUrl             String?
-  rules                 String?
-  coverReelId           String?
-  maxSubmissionsPerUser Int             @default(1)
-  requiresApproval      Boolean         @default(false)
-  type                  ChallengeType   @default(DAILY)
-  rewardPool            Float           @default(0.0)
-  status                ChallengeStatus @default(ACTIVE)
-  participantCount      Int             @default(0)
-  viewsCount            Int             @default(0)
-  likesCount            Int             @default(0)
-  sharesCount           Int             @default(0)
-  startDate             DateTime        @default(now())
+  type                  ChallengeType                @default(DAILY)
+  rewardPool            Float                        @default(0.0)
+  status                ChallengeStatus              @default(ACTIVE)
+  startDate             DateTime                     @default(now())
   endDate               DateTime
-  createdAt             DateTime        @default(now())
-  updatedAt             DateTime        @updatedAt
-
-  // Phase 3: Sponsored Challenges
-  isSponsored        Boolean @default(false)
-  sponsorName        String?
-  sponsorLogoUrl     String?
-  sponsorUrl         String?
-  termsAndConditions String?
-
-  participants       ChallengeParticipant[]
-  reels              Reel[]                       @relation("ChallengeReels")
-  rewardTransactions ChallengeRewardTransaction[]
+  createdAt             DateTime                     @default(now())
+  updatedAt             DateTime                     @updatedAt
+  bannerUrl             String?
+  coverReelId           String?
+  hashtagName           String?
+  likesCount            Int                          @default(0)
+  maxSubmissionsPerUser Int                          @default(1)
+  participantCount      Int                          @default(0)
+  requiresApproval      Boolean                      @default(false)
+  rules                 String?
+  sharesCount           Int                          @default(0)
+  viewsCount            Int                          @default(0)
+  isSponsored           Boolean                      @default(false)
+  sponsorLogoUrl        String?
+  sponsorName           String?
+  sponsorUrl            String?
+  termsAndConditions    String?
+  participants          ChallengeParticipant[]
+  rewardTransactions    ChallengeRewardTransaction[]
+  reels                 Reel[]                       @relation("ChallengeReels")
 }
 
 model ChallengeParticipant {
@@ -510,6 +507,181 @@ model ChallengeParticipant {
   user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([challengeId, userId])
+}
+
+model Hashtag {
+  id          String        @id @default(uuid())
+  name        String        @unique
+  usageCount  Int           @default(0)
+  recentScore Float         @default(0)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  reels       ReelHashtag[]
+
+  @@index([usageCount(sort: Desc)])
+  @@index([recentScore(sort: Desc)])
+}
+
+model ReelHashtag {
+  reelId    String
+  hashtagId String
+  createdAt DateTime @default(now())
+  hashtag   Hashtag  @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
+  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+
+  @@id([reelId, hashtagId])
+  @@index([hashtagId])
+  @@index([reelId])
+}
+
+model ChallengeRewardTransaction {
+  id           String                @id @default(uuid())
+  challengeId  String
+  winnerUserId String
+  rewardAmount Float
+  rewardType   Currency
+  status       ChallengeRewardStatus @default(PENDING)
+  processedAt  DateTime?
+  createdAt    DateTime              @default(now())
+  updatedAt    DateTime              @updatedAt
+  challenge    Challenge             @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  winner       User                  @relation(fields: [winnerUserId], references: [id], onDelete: Cascade)
+
+  @@unique([challengeId, winnerUserId])
+}
+
+model WalletLedger {
+  id           String       @id @default(uuid())
+  userId       String
+  walletId     String
+  source       LedgerSource
+  sourceId     String
+  credit       Float        @default(0.0)
+  debit        Float        @default(0.0)
+  balanceAfter Float
+  description  String?
+  createdAt    DateTime     @default(now())
+  wallet       Wallet       @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([walletId])
+}
+
+model WithdrawalRequest {
+  id                  String           @id @default(uuid())
+  walletId            String
+  amount              Float
+  status              WithdrawalStatus @default(PENDING)
+  tdsDeducted         Float            @default(0.0)
+  platformFeeDeducted Float            @default(0.0)
+  netPayable          Float            @default(0.0)
+  rejectionReason     String?
+  transactionId       String?
+  createdAt           DateTime         @default(now())
+  updatedAt           DateTime         @updatedAt
+  wallet              Wallet           @relation(fields: [walletId], references: [id], onDelete: Cascade)
+}
+
+model ViewEvent {
+  id                String   @id @default(uuid())
+  reelId            String
+  userId            String?
+  deviceId          String?
+  sessionId         String?
+  ipHash            String?
+  watchDuration     Int      @default(0)
+  completionPercent Float    @default(0.0)
+  createdAt         DateTime @default(now())
+
+  @@index([reelId])
+  @@index([userId])
+  @@index([deviceId])
+}
+
+model ValidView {
+  id          String   @id @default(uuid())
+  reelId      String
+  userId      String?
+  deviceId    String?
+  createdAt   DateTime @default(now())
+  isProcessed Boolean  @default(false)
+  batchId     String?
+  reel        Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+
+  @@unique([reelId, userId])
+  @@unique([reelId, deviceId])
+}
+
+model EarningBatch {
+  id            String    @id @default(uuid())
+  status        String    @default("PENDING")
+  totalViews    Int       @default(0)
+  totalEarnings Float     @default(0.0)
+  createdAt     DateTime  @default(now())
+  processedAt   DateTime?
+}
+
+model EarningSnapshot {
+  id                String   @id @default(uuid())
+  userId            String
+  date              DateTime @db.Date
+  viewEarnings      Float    @default(0.0)
+  giftEarnings      Float    @default(0.0)
+  challengeEarnings Float    @default(0.0)
+  referralEarnings  Float    @default(0.0)
+  totalEarnings     Float    @default(0.0)
+  createdAt         DateTime @default(now())
+
+  @@unique([userId, date])
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  actorId    String
+  action     String
+  entityType String
+  entityId   String
+  oldValue   Json?
+  newValue   Json?
+  timestamp  DateTime @default(now())
+
+  @@index([actorId])
+  @@index([entityType, entityId])
+}
+
+model SystemConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  valueJson   Json
+  description String?
+  updatedAt   DateTime @updatedAt
+  updatedBy   String?
+}
+
+model ReferralTracker {
+  id         String         @id @default(uuid())
+  referrerId String
+  referredId String         @unique
+  status     ReferralStatus @default(PENDING)
+  rewardInr  Float          @default(0.0)
+  createdAt  DateTime       @default(now())
+  updatedAt  DateTime       @updatedAt
+
+  @@index([referrerId])
+}
+
+model ChallengeScore {
+  id            String   @id @default(uuid())
+  challengeId   String
+  participantId String
+  views         Int      @default(0)
+  likes         Int      @default(0)
+  comments      Int      @default(0)
+  shares        Int      @default(0)
+  totalScore    Float    @default(0.0)
+  updatedAt     DateTime @updatedAt
+
+  @@unique([challengeId, participantId])
 }
 
 enum Role {
@@ -573,12 +745,12 @@ enum ChallengeType {
 }
 
 enum ChallengeStatus {
-  DRAFT
-  SCHEDULED
   ACTIVE
-  PAUSED
   COMPLETED
   CANCELLED
+  DRAFT
+  SCHEDULED
+  PAUSED
 }
 
 enum MessageType {
@@ -605,50 +777,6 @@ enum NotificationType {
   CHALLENGE_REJECTED        @map("challenge_rejected")
 }
 
-model Hashtag {
-  id          String   @id @default(uuid())
-  name        String   @unique // lowercase, no #
-  usageCount  Int      @default(0) // total times used
-  recentScore Float    @default(0) // used for trending algorithm
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-
-  reels ReelHashtag[]
-
-  @@index([usageCount(sort: Desc)])
-  @@index([recentScore(sort: Desc)])
-}
-
-model ReelHashtag {
-  reelId    String
-  hashtagId String
-  createdAt DateTime @default(now())
-
-  reel    Reel    @relation(fields: [reelId], references: [id], onDelete: Cascade)
-  hashtag Hashtag @relation(fields: [hashtagId], references: [id], onDelete: Cascade)
-
-  @@id([reelId, hashtagId])
-  @@index([hashtagId])
-  @@index([reelId])
-}
-
-model ChallengeRewardTransaction {
-  id           String                @id @default(uuid())
-  challengeId  String
-  winnerUserId String
-  rewardAmount Float
-  rewardType   Currency
-  status       ChallengeRewardStatus @default(PENDING)
-  processedAt  DateTime?
-  createdAt    DateTime              @default(now())
-  updatedAt    DateTime              @updatedAt
-
-  challenge Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
-  winner    User      @relation(fields: [winnerUserId], references: [id], onDelete: Cascade)
-
-  @@unique([challengeId, winnerUserId])
-}
-
 enum ChallengeRewardStatus {
   PENDING
   PROCESSING
@@ -662,28 +790,6 @@ enum ReelApprovalStatus {
   REJECTED
 }
 
-// ==========================================
-// ENTERPRISE MONETIZATION & AUDIT MODELS
-// ==========================================
-
-model WalletLedger {
-  id           String       @id @default(uuid())
-  userId       String
-  walletId     String
-  source       LedgerSource
-  sourceId     String
-  credit       Float        @default(0.0)
-  debit        Float        @default(0.0)
-  balanceAfter Float
-  description  String?
-  createdAt    DateTime     @default(now())
-
-  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([walletId])
-}
-
 enum LedgerSource {
   VIEW_EARNING
   GIFT_RECEIVED
@@ -692,22 +798,6 @@ enum LedgerSource {
   CHALLENGE_REWARD
   WITHDRAWAL
   FRAUD_REVERSAL
-}
-
-model WithdrawalRequest {
-  id                  String           @id @default(uuid())
-  walletId            String
-  amount              Float
-  status              WithdrawalStatus @default(PENDING)
-  tdsDeducted         Float            @default(0.0)
-  platformFeeDeducted Float            @default(0.0)
-  netPayable          Float            @default(0.0)
-  rejectionReason     String?
-  transactionId       String?
-  createdAt           DateTime         @default(now())
-  updatedAt           DateTime         @updatedAt
-
-  wallet Wallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
 }
 
 enum WithdrawalStatus {
@@ -720,111 +810,8 @@ enum WithdrawalStatus {
   REJECTED
 }
 
-model ViewEvent {
-  id                String   @id @default(uuid())
-  reelId            String
-  userId            String?
-  deviceId          String?
-  sessionId         String?
-  ipHash            String?
-  watchDuration     Int      @default(0) // in milliseconds
-  completionPercent Float    @default(0.0)
-  createdAt         DateTime @default(now())
-
-  @@index([reelId])
-  @@index([userId])
-  @@index([deviceId])
-}
-
-model ValidView {
-  id          String   @id @default(uuid())
-  reelId      String
-  userId      String?
-  deviceId    String?
-  createdAt   DateTime @default(now())
-  isProcessed Boolean  @default(false)
-  batchId     String?
-
-  reel Reel @relation(fields: [reelId], references: [id], onDelete: Cascade)
-
-  @@unique([reelId, userId]) // Enforce 1 valid view per user per reel lifetime
-  @@unique([reelId, deviceId]) // Enforce 1 valid view per device per reel lifetime
-}
-
-model EarningBatch {
-  id            String    @id @default(uuid())
-  status        String    @default("PENDING") // PENDING, PROCESSING, COMPLETED, FAILED
-  totalViews    Int       @default(0)
-  totalEarnings Float     @default(0.0)
-  createdAt     DateTime  @default(now())
-  processedAt   DateTime?
-}
-
-model EarningSnapshot {
-  id                String   @id @default(uuid())
-  userId            String
-  date              DateTime @db.Date
-  viewEarnings      Float    @default(0.0)
-  giftEarnings      Float    @default(0.0)
-  challengeEarnings Float    @default(0.0)
-  referralEarnings  Float    @default(0.0)
-  totalEarnings     Float    @default(0.0)
-  createdAt         DateTime @default(now())
-
-  @@unique([userId, date])
-}
-
-model AuditLog {
-  id         String   @id @default(uuid())
-  actorId    String
-  action     String
-  entityType String
-  entityId   String
-  oldValue   Json?
-  newValue   Json?
-  timestamp  DateTime @default(now())
-
-  @@index([actorId])
-  @@index([entityType, entityId])
-}
-
-model SystemConfig {
-  id          String   @id @default(uuid())
-  key         String   @unique
-  valueJson   Json
-  description String?
-  updatedAt   DateTime @updatedAt
-  updatedBy   String?
-}
-
-model ReferralTracker {
-  id         String         @id @default(uuid())
-  referrerId String
-  referredId String         @unique
-  status     ReferralStatus @default(PENDING)
-  rewardInr  Float          @default(0.0)
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
-
-  @@index([referrerId])
-}
-
 enum ReferralStatus {
   PENDING
   COMPLETED
   REJECTED
-}
-
-model ChallengeScore {
-  id            String   @id @default(uuid())
-  challengeId   String
-  participantId String
-  views         Int      @default(0)
-  likes         Int      @default(0)
-  comments      Int      @default(0)
-  shares        Int      @default(0)
-  totalScore    Float    @default(0.0)
-  updatedAt     DateTime @updatedAt
-
-  @@unique([challengeId, participantId])
 }

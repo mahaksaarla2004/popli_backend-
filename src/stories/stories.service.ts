@@ -184,6 +184,7 @@ export class StoriesService {
               senderId: creatorId,
               type: 'STORY_MENTION' as any,
               storyId: story.id,
+              mediaUrl: story.mediaUrl,
               text: 'Mentioned you in their story',
             },
             include: { sender: { select: { id: true, username: true, avatar: true, name: true } } }
