@@ -128,14 +128,15 @@ export class WalletService {
       where: { userId },
       include: {
         ledgers: { orderBy: { createdAt: 'desc' }, take: 50 },
-        withdrawalRequests: { orderBy: { createdAt: 'desc' }, take: 10 }
+        withdrawalRequests: { orderBy: { createdAt: 'desc' }, take: 10 },
+        transactions: { orderBy: { createdAt: 'desc' }, take: 20 }
       },
     });
     
     if (!wallet) {
       return this.prisma.wallet.create({
         data: { userId },
-        include: { ledgers: true, withdrawalRequests: true }
+        include: { ledgers: true, withdrawalRequests: true, transactions: true }
       });
     }
     

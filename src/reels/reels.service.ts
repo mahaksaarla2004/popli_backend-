@@ -748,11 +748,13 @@ export class ReelsService {
       }
     }
 
-    // 3. Increment public views count
-    await this.prisma.reel.update({
-      where: { id: reelId },
-      data: { viewsCount: { increment: 1 } },
-    });
+    // 3. Increment public views count only if duration is valid
+    if (isValidDuration) {
+      await this.prisma.reel.update({
+        where: { id: reelId },
+        data: { viewsCount: { increment: 1 } },
+      });
+    }
 
     // 4. Update Challenge Leaderboard if applicable
     if (reel.challengeId && isValidForEarning && userId) {

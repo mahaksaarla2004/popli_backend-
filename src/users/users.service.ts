@@ -24,6 +24,20 @@ export class UsersService {
     });
 
     if (!user) throw new NotFoundException('User not found');
+
+    // Auto-sync followers/following count to fix any drift
+    const actualFollowers = await this.prisma.follows.count({ where: { followingId: userId } });
+    const actualFollowing = await this.prisma.follows.count({ where: { followerId: userId } });
+    
+    if (user.followersCount !== actualFollowers || user.followingCount !== actualFollowing) {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { followersCount: actualFollowers, followingCount: actualFollowing }
+      });
+      user.followersCount = actualFollowers;
+      user.followingCount = actualFollowing;
+    }
+
     return user;
   }
 
@@ -123,6 +137,20 @@ export class UsersService {
     });
 
     if (!creator) throw new NotFoundException('Creator not found');
+
+    // Auto-sync followers/following count to fix any drift
+    const actualFollowers = await this.prisma.follows.count({ where: { followingId: creator.id } });
+    const actualFollowing = await this.prisma.follows.count({ where: { followerId: creator.id } });
+    
+    if (creator.followersCount !== actualFollowers || creator.followingCount !== actualFollowing) {
+      await this.prisma.user.update({
+        where: { id: creator.id },
+        data: { followersCount: actualFollowers, followingCount: actualFollowing }
+      });
+      creator.followersCount = actualFollowers;
+      creator.followingCount = actualFollowing;
+    }
+
     return creator;
   }
 

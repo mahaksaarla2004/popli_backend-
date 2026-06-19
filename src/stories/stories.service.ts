@@ -215,10 +215,21 @@ export class StoriesService {
   }
 
   async getActiveStories(userId: string) {
-    // Only return stories that haven't expired
+    // Get the list of user IDs that this user follows
+    const following = await this.prisma.follows.findMany({
+      where: { followerId: userId },
+      select: { followingId: true }
+    });
+    const followingIds = following.map((f: any) => f.followingId);
+    
+    // Include user's own ID
+    const validCreatorIds = [...followingIds, userId];
+
+    // Only return stories that haven't expired AND are from followed users or self
     return this.prisma.story.findMany({
       where: {
         expiresAt: { gt: new Date() },
+        creatorId: { in: validCreatorIds }
       },
       include: {
         creator: { select: { id: true, username: true, avatar: true } },
@@ -229,6 +240,15 @@ export class StoriesService {
   }
 
   async markViewed(storyId: string, userId: string) {
+    const story = await this.prisma.story.findUnique({
+      where: { id: storyId },
+      select: { creatorId: true }
+    });
+
+    if (story && story.creatorId === userId) {
+      return null;
+    }
+
     return this.prisma.storyViewer.upsert({
       where: { storyId_userId: { storyId, userId } },
       update: { viewedAt: new Date() },
