@@ -69,11 +69,6 @@ export class UpdateProfileDto {
   @IsOptional()
   socialLinks?: any[];
 
-  @ApiPropertyOptional()
-  @IsArray()
-  @IsOptional()
-  interestNames?: string[];
-
 
 }
 
