@@ -377,13 +377,14 @@ export class ReelsService {
           try {
             const notification = await this.prisma.notification.create({
               data: {
-                userId: reel.creatorId,
+                userId: reelCheck.creatorId,
                 type: NotificationType.LIKE,
                 title: 'New Like',
-                body: `${user.name} liked your reel.`,
+                body: `liked your reel`,
                 senderId: userId,
                 senderAvatar: user.avatar || 'https://i.pravatar.cc/150',
                 postId: reelId,
+                metaData: { targetType: 'REEL', reelThumbnail: reelCheck.thumbnailUrl }
               },
             });
             this.notificationsGateway.sendNotificationToUser(reel.creatorId, notification);
@@ -470,11 +471,12 @@ export class ReelsService {
             userId: reel.creatorId,
             type: NotificationType.COMMENT,
             title: 'New Comment',
-            body: `${comment.user.name} commented: "${dto.text}"`,
+            body: `commented: "${dto.text}"`,
             senderId: userId,
             senderAvatar: comment.user.avatar || 'https://i.pravatar.cc/150',
             postId: reelId,
             commentId: comment.id,
+            metaData: { targetType: 'REEL', reelThumbnail: reel.thumbnailUrl, commentText: dto.text }
           },
         });
         this.notificationsGateway.sendNotificationToUser(reel.creatorId, notification);
@@ -508,6 +510,7 @@ export class ReelsService {
               postId: reelId,
               commentId: parentComment.id,
               replyId: comment.id,
+              metaData: { targetType: 'REEL', reelThumbnail: reel.thumbnailUrl, commentText: dto.text }
             },
           });
           this.notificationsGateway.sendNotificationToUser(parentComment.userId, notification);
@@ -536,6 +539,7 @@ export class ReelsService {
                 postId: reelId,
                 commentId: dto.parentId ? dto.parentId : comment.id,
                 replyId: dto.parentId ? comment.id : undefined,
+                metaData: { targetType: 'REEL', reelThumbnail: reel.thumbnailUrl, commentText: dto.text }
               },
             });
             this.notificationsGateway.sendNotificationToUser(mUser.id, notification);
@@ -637,6 +641,7 @@ export class ReelsService {
       const comment = await this.prisma.comment.update({
         where: { id: commentId },
         data: { likesCount: { increment: 1 } },
+        include: { reel: { select: { thumbnailUrl: true } } }
       });
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
 
@@ -653,6 +658,7 @@ export class ReelsService {
               postId: comment.reelId,
               commentId: comment.id,
               isActive: true,
+              metaData: { targetType: 'REEL', reelThumbnail: comment.reel?.thumbnailUrl, commentText: comment.text }
             },
           });
           this.notificationsGateway.sendNotificationToUser(comment.userId, notification);

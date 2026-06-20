@@ -20,4 +20,9 @@ export class SendGiftDto {
   @IsString()
   @IsOptional()
   message?: string;
+
+  @ApiPropertyOptional()
+  @IsString()
+  @IsOptional()
+  reelId?: string;
 }

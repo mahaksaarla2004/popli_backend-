@@ -49,9 +49,10 @@ export class SocialService {
             userId: followingId,
             type: NotificationType.FOLLOW,
             title: 'New Follower',
-            body: `${follower.name} started following you.`,
+            body: `started following you.`,
             senderId: followerId,
             senderAvatar: follower.avatar || 'https://i.pravatar.cc/150',
+            metaData: { targetType: 'USER' }
           },
         });
       }

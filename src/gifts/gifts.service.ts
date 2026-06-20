@@ -84,9 +84,16 @@ export class GiftsService {
         data: {
           userId: dto.receiverId,
           senderId: senderId,
-          type: 'LIKE', // Fallback type
+          type: 'GIFT' as any,
           title: 'You received a gift!',
-          body: `Someone sent you a ${gift.name} worth ₹${earningsInINR.toFixed(2)}!`,
+          body: `sent you a ${gift.name}`,
+          postId: dto.reelId,
+          metaData: {
+            giftId: gift.id,
+            giftType: gift.name,
+            giftAmount: earningsInINR,
+            targetType: 'REEL'
+          }
         }
       });
 

@@ -182,7 +182,17 @@ export class UsersService {
 
   async searchUsers(query: string) {
     if (!query || query.trim() === '') {
-      return [];
+      return this.prisma.user.findMany({
+        orderBy: { followersCount: 'desc' },
+        take: 20,
+        select: {
+          id: true,
+          name: true,
+          username: true,
+          avatar: true,
+          isVerified: true,
+        },
+      });
     }
     return this.prisma.user.findMany({
       where: {

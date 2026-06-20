@@ -767,6 +767,7 @@ enum NotificationType {
   COMMENT_LIKE              @map("comment_like")
   MENTION                   @map("mention")
   STORY_MENTION             @map("story_mention")
+  GIFT                      @map("gift")
   CHALLENGE_INVITE          @map("challenge_invite")
   CHALLENGE_WIN             @map("challenge_win")
   CHALLENGE_RANKING         @map("challenge_ranking")
