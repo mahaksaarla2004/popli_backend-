@@ -22,11 +22,6 @@ export class UpdateProfileDto {
   @IsOptional()
   phone?: string;
 
-  @ApiPropertyOptional()
-  @IsString()
-  @IsOptional()
-  referredByCode?: string;
-
 
   @ApiPropertyOptional()
   @IsString()

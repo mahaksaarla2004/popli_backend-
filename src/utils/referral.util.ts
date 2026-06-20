@@ -6,28 +6,20 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
   });
   if (!tracker) return false;
 
+  const kyc = await prisma.kYCRecord.findFirst({ where: { userId, status: 'APPROVED' }});
+  if (!kyc) return false;
+
+  const firstReel = await prisma.reel.findFirst({ where: { creatorId: userId }});
+  if (!firstReel) return false;
+
   try {
     return await prisma.$transaction(async (tx: any) => {
-      // Database-level compare-and-swap to absolutely prevent race conditions
-      // This ensures we only update if rewardGranted is false AT THE MOMENT OF THE WRITE
-      const updateResult = await tx.referralTracker.updateMany({ 
-        where: { 
-          id: tracker.id,
-          status: 'PENDING',
-          rewardGranted: false
-        }, 
-        data: { 
-          status: 'COMPLETED', 
-          rewardInr: 100,
-          rewardGranted: true,
-          rewardGrantedAt: new Date()
-        }
-      });
+      // Ensure not already processed
+      const check = await tx.referralTracker.findUnique({ where: { id: tracker.id }});
+      if (!check || check.status !== 'PENDING') return false;
 
-      // If count is 0, another concurrent request already processed this exact referral
-      if (updateResult.count === 0) {
-        return false;
-      }
+      // Mark as complete
+      await tx.referralTracker.update({ where: { id: tracker.id }, data: { status: 'COMPLETED', rewardInr: 100 }});
 
       // Referrer ₹100
       const referrerWallet = await tx.wallet.upsert({
@@ -47,7 +39,7 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
             sourceId: tracker.id,
             credit: 100,
             balanceAfter: referrerWallet.withdrawableBalance + 100,
-            description: 'Referral Bonus for a new signup'
+            description: 'Referral Bonus for a verified signup (KYC + First Post completed)'
         }
       });
 
@@ -69,7 +61,7 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
             sourceId: tracker.id,
             credit: 25,
             balanceAfter: referredWallet.withdrawableBalance + 25,
-            description: 'Signup Bonus from referral'
+            description: 'Signup Bonus for completing KYC and First Post'
         }
       });
 
@@ -79,7 +71,7 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
           userId: tracker.referrerId,
           type: 'SYSTEM',
           title: 'Referral Bonus!',
-          body: 'You earned ₹100 because your referred friend signed up!'
+          body: 'You earned ₹100 because your referred friend completed their KYC and posted their first reel!'
         }
       });
 
@@ -89,7 +81,7 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
           userId: userId,
           type: 'SYSTEM',
           title: 'Welcome Bonus!',
-          body: 'You earned ₹25 for signing up with a referral code!'
+          body: 'You earned ₹25 for completing your KYC and posting your first reel!'
         }
       });
 
