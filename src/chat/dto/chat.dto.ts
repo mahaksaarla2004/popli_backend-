@@ -2,10 +2,10 @@ import { IsString, IsNotEmpty, IsOptional } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class SendMessageDto {
-  @ApiProperty()
+  @ApiPropertyOptional()
   @IsString()
-  @IsNotEmpty()
-  text: string;
+  @IsOptional()
+  text?: string;
 
   @ApiPropertyOptional()
   @IsString()

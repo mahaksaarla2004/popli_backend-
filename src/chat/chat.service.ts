@@ -76,7 +76,7 @@ export class ChatService {
   async getMessages(chatId: string) {
     return this.prisma.message.findMany({
       where: { chatId },
-      orderBy: { createdAt: 'asc' },
+      orderBy: { createdAt: 'desc' },
       include: {
         sender: { select: { id: true, username: true, avatar: true } },
       },
