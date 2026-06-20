@@ -13,6 +13,7 @@ import {
   VerifyFirebaseTokenDto,
 } from './dto/auth.dto';
 import { FirebaseAdminService } from './firebase-admin.service';
+import { checkAndProcessReferral } from '../utils/referral.util';
 
 @Injectable()
 export class AuthService {
@@ -126,6 +127,11 @@ export class AuthService {
             referredId: user.id,
             status: 'PENDING'
           }
+        });
+        
+        // Immediately process the referral reward
+        checkAndProcessReferral(this.prisma, user.id).catch(err => {
+          console.error('Immediate referral process failed:', err);
         });
       }
     }

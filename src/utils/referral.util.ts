@@ -6,12 +6,6 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
   });
   if (!tracker) return false;
 
-  const kyc = await prisma.kYCRecord.findFirst({ where: { userId, status: 'APPROVED' }});
-  if (!kyc) return false;
-
-  const firstReel = await prisma.reel.findFirst({ where: { creatorId: userId }});
-  if (!firstReel) return false;
-
   try {
     return await prisma.$transaction(async (tx: any) => {
       // Database-level compare-and-swap to absolutely prevent race conditions
@@ -53,7 +47,7 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
             sourceId: tracker.id,
             credit: 100,
             balanceAfter: referrerWallet.withdrawableBalance + 100,
-            description: 'Referral Bonus for a verified signup (KYC + First Post completed)'
+            description: 'Referral Bonus for a new signup'
         }
       });
 
@@ -75,7 +69,7 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
             sourceId: tracker.id,
             credit: 25,
             balanceAfter: referredWallet.withdrawableBalance + 25,
-            description: 'Signup Bonus for completing KYC and First Post'
+            description: 'Signup Bonus from referral'
         }
       });
 
@@ -85,7 +79,7 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
           userId: tracker.referrerId,
           type: 'SYSTEM',
           title: 'Referral Bonus!',
-          body: 'You earned ₹100 because your referred friend completed their KYC and posted their first reel!'
+          body: 'You earned ₹100 because your referred friend signed up!'
         }
       });
 
@@ -95,7 +89,7 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
           userId: userId,
           type: 'SYSTEM',
           title: 'Welcome Bonus!',
-          body: 'You earned ₹25 for completing your KYC and posting your first reel!'
+          body: 'You earned ₹25 for signing up with a referral code!'
         }
       });
 
