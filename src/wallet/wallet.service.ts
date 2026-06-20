@@ -193,11 +193,16 @@ export class WalletService {
         }
       });
 
-      // 2. Lock the funds by moving from withdrawable to pending (or just deduct from withdrawable)
-      const updatedWallet = await tx.wallet.update({
-        where: { id: wallet.id },
-        data: { withdrawableBalance: { decrement: dto.amount } }
-      });
+      // 2. Lock the funds safely preventing race conditions
+      let updatedWallet;
+      try {
+        updatedWallet = await tx.wallet.update({
+          where: { id: wallet.id, withdrawableBalance: { gte: dto.amount } },
+          data: { withdrawableBalance: { decrement: dto.amount } }
+        });
+      } catch (e) {
+        throw new BadRequestException('Insufficient balance or concurrent transaction detected.');
+      }
 
       // 3. Create Ledger Entry
       await tx.walletLedger.create({

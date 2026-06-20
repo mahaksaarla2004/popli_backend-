@@ -14,12 +14,13 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
 
   try {
     return await prisma.$transaction(async (tx: any) => {
-      // Ensure not already processed
-      const check = await tx.referralTracker.findUnique({ where: { id: tracker.id }});
-      if (!check || check.status !== 'PENDING') return false;
-
-      // Mark as complete
-      await tx.referralTracker.update({ where: { id: tracker.id }, data: { status: 'COMPLETED', rewardInr: 100 }});
+      // Atomically check and mark as complete
+      const updateResult = await tx.referralTracker.updateMany({ 
+        where: { id: tracker.id, status: 'PENDING' }, 
+        data: { status: 'COMPLETED', rewardInr: 100 }
+      });
+      
+      if (updateResult.count === 0) return false;
 
       // Referrer ₹100
       const referrerWallet = await tx.wallet.upsert({
