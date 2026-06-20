@@ -235,6 +235,7 @@ export class StoriesService {
       include: {
         creator: { select: { id: true, username: true, avatar: true } },
         viewers: { where: { userId }, select: { id: true } }, // checking if current user viewed
+        _count: { select: { viewers: true } }, // get total viewers count
       },
       orderBy: { createdAt: 'desc' },
     });

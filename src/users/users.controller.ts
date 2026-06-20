@@ -42,6 +42,14 @@ export class UsersController {
     return this.usersService.updatePreferences(req.user.id, dto);
   }
 
+  @Get('me/referrals')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get current user referral history' })
+  getReferrals(@Req() req: any) {
+    return this.usersService.getReferrals(req.user.id);
+  }
+
   @Get('search')
   @ApiOperation({ summary: 'Search users by username or name' })
   searchUsers(@Query('q') query: string) {

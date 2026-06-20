@@ -659,13 +659,15 @@ model SystemConfig {
 }
 
 model ReferralTracker {
-  id         String         @id @default(uuid())
-  referrerId String
-  referredId String         @unique
-  status     ReferralStatus @default(PENDING)
-  rewardInr  Float          @default(0.0)
-  createdAt  DateTime       @default(now())
-  updatedAt  DateTime       @updatedAt
+  id              String         @id @default(uuid())
+  referrerId      String
+  referredId      String         @unique
+  status          ReferralStatus @default(PENDING)
+  rewardInr       Float          @default(0.0)
+  rewardGranted   Boolean        @default(false)
+  rewardGrantedAt DateTime?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
 
   @@index([referrerId])
 }

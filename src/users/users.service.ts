@@ -68,9 +68,34 @@ export class UsersService {
       if (existing) throw new BadRequestException('Username is already taken');
     }
 
-    const { interestIds, interestNames, dob, ...restDto } = dto;
+    const { interestIds, interestNames, dob, referredByCode, ...restDto } = dto;
 
     const data: any = { ...restDto };
+
+    if (referredByCode) {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (user?.referredById) {
+        throw new BadRequestException('You have already used a referral code.');
+      }
+      if (user?.referralCode === referredByCode) {
+        throw new BadRequestException('You cannot use your own referral code.');
+      }
+      const referrer = await this.prisma.user.findUnique({ where: { referralCode: referredByCode } });
+      if (!referrer) {
+        throw new BadRequestException('Invalid referral code.');
+      }
+      
+      data.referredById = referrer.id;
+
+      // Create Referral Tracker
+      await this.prisma.referralTracker.create({
+        data: {
+          referrerId: referrer.id,
+          referredId: userId,
+          status: 'PENDING'
+        }
+      });
+    }
 
     if (dob) {
       data.dob = new Date(dob);
@@ -127,6 +152,27 @@ export class UsersService {
     return this.prisma.userPreference.update({
       where: { userId },
       data: dto,
+    });
+  }
+
+  async getReferrals(userId: string) {
+    const referrals = await this.prisma.referralTracker.findMany({
+      where: { referrerId: userId },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    const referredUserIds = referrals.map(r => r.referredId);
+    const users = await this.prisma.user.findMany({
+      where: { id: { in: referredUserIds } },
+      select: { id: true, name: true, username: true, avatar: true }
+    });
+
+    return referrals.map(r => {
+      const user = users.find(u => u.id === r.referredId);
+      return {
+        ...r,
+        referredUser: user || null
+      };
     });
   }
 
