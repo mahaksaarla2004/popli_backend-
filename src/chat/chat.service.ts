@@ -1,4 +1,9 @@
-import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SendMessageDto } from './dto/chat.dto';
 import { ChatGateway } from './chat.gateway';
@@ -129,9 +134,12 @@ export class ChatService {
   }
 
   async markMessageRead(chatId: string, messageId: string, userId: string) {
-    const message = await this.prisma.message.findUnique({ where: { id: messageId } });
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+    });
     if (!message) throw new NotFoundException('Message not found');
-    if (message.chatId !== chatId) throw new Error('Message does not belong to this chat');
+    if (message.chatId !== chatId)
+      throw new Error('Message does not belong to this chat');
 
     // We only update if the current user is NOT the sender (i.e. they are the receiver reading it)
     if (message.senderId !== userId && message.status !== 'read') {
@@ -140,13 +148,13 @@ export class ChatService {
         data: { status: 'read' },
       });
     }
-    
+
     return message;
   }
 
   async deleteChat(chatId: string, userId: string) {
     const participant = await this.prisma.chatParticipant.findUnique({
-      where: { chatId_userId: { chatId, userId } }
+      where: { chatId_userId: { chatId, userId } },
     });
     if (!participant) throw new NotFoundException('Chat not found for user');
 
@@ -155,30 +163,39 @@ export class ChatService {
   }
 
   async deleteMessage(chatId: string, messageId: string, userId: string) {
-    const message = await this.prisma.message.findUnique({ where: { id: messageId } });
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+    });
     if (!message) throw new NotFoundException('Message not found');
     if (message.senderId !== userId) {
       throw new Error('You can only delete your own messages');
     }
-    
+
     return this.prisma.message.delete({ where: { id: messageId } });
   }
 
-  async reactToMessage(chatId: string, messageId: string, userId: string, emoji: string | null) {
-    const message = await this.prisma.message.findUnique({ where: { id: messageId } });
+  async reactToMessage(
+    chatId: string,
+    messageId: string,
+    userId: string,
+    emoji: string | null,
+  ) {
+    const message = await this.prisma.message.findUnique({
+      where: { id: messageId },
+    });
     if (!message) throw new NotFoundException('Message not found');
-    
+
     let reactions: Record<string, string> = {};
     if (message.reactions && typeof message.reactions === 'object') {
       reactions = { ...(message.reactions as Record<string, string>) };
     }
-    
+
     if (emoji) {
       reactions[userId] = emoji;
     } else {
       delete reactions[userId];
     }
-    
+
     return this.prisma.message.update({
       where: { id: messageId },
       data: { reactions },

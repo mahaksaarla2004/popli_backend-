@@ -1,7 +1,6 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-async function main() {
-  console.log('Likes:', await prisma.like.count());
-  console.log('WatchHistory:', await prisma.watchHistory.count());
-}
-main().catch(console.error).finally(() => prisma.$disconnect());
+prisma.reel.findMany({ orderBy: { createdAt: 'desc' }, take: 1, include: { location: true } })
+  .then(d => console.dir(d, {depth: null}))
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());

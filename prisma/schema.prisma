@@ -165,12 +165,24 @@ model Reel {
   challenge               Challenge?         @relation("ChallengeReels", fields: [challengeId], references: [id])
   creator                 User               @relation("CreatorReels", fields: [creatorId], references: [id], onDelete: Cascade)
   hashtags                ReelHashtag[]
+  location                PostLocation?
   reports                 Report[]           @relation("ReportedReel")
   saves                   Save[]
   shares                  Share[]
   validViews              ValidView[]
   watchHistory            WatchHistory[]
   taggedUsers             User[]             @relation("ReelTaggedUsers")
+}
+
+model PostLocation {
+  id          String   @id @default(uuid())
+  reelId      String   @unique
+  name        String
+  latitude    Float?
+  longitude   Float?
+  placeId     String?
+  createdAt   DateTime @default(now())
+  reel        Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
 }
 
 model Comment {

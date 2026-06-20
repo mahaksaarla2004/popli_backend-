@@ -18,12 +18,12 @@ export class SystemController {
 
     const configs = await this.prisma.systemConfig.findMany({
       where: whereClause,
-      select: { key: true, valueJson: true }
+      select: { key: true, valueJson: true },
     });
 
     // Format as key-value pairs
     const result: Record<string, any> = {};
-    configs.forEach(config => {
+    configs.forEach((config) => {
       result[config.key] = config.valueJson;
     });
 

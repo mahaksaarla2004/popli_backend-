@@ -106,7 +106,7 @@ export class AdminService {
       data: { isVerified: true, role: 'CREATOR' },
     });
 
-    checkAndProcessReferral(this.prisma, kyc.userId).catch(err => {
+    checkAndProcessReferral(this.prisma, kyc.userId).catch((err) => {
       console.error('Referral process error on KYC approval', err);
     });
 
@@ -201,7 +201,7 @@ export class AdminService {
     const admin = await this.prisma.user.findUnique({ where: { id: adminId } });
     if (!admin || admin.role !== 'ADMIN')
       throw new UnauthorizedException('Not authorized');
-    
+
     return this.prisma.withdrawalRequest.findMany({
       include: {
         wallet: {
@@ -218,7 +218,9 @@ export class AdminService {
       throw new UnauthorizedException('Not authorized');
 
     return this.prisma.$transaction(async (tx) => {
-      const request = await tx.withdrawalRequest.findUnique({ where: { id: reqId } });
+      const request = await tx.withdrawalRequest.findUnique({
+        where: { id: reqId },
+      });
       if (!request || request.status !== 'PENDING') {
         throw new BadRequestException('Request not found or already processed');
       }
@@ -230,7 +232,7 @@ export class AdminService {
 
       await tx.wallet.update({
         where: { id: request.walletId },
-        data: { totalWithdrawn: { increment: request.amount } }
+        data: { totalWithdrawn: { increment: request.amount } },
       });
 
       // Audit Log
@@ -240,15 +242,19 @@ export class AdminService {
           action: 'WITHDRAWAL_APPROVED',
           entityType: 'WithdrawalRequest',
           entityId: reqId,
-          newValue: { status: 'APPROVED' }
-        }
+          newValue: { status: 'APPROVED' },
+        },
       });
 
       return updated;
     });
   }
 
-  async rejectWithdrawal(reqId: string, adminId: string, reason: string = 'Rejected by Admin') {
+  async rejectWithdrawal(
+    reqId: string,
+    adminId: string,
+    reason: string = 'Rejected by Admin',
+  ) {
     const admin = await this.prisma.user.findUnique({ where: { id: adminId } });
     if (!admin || admin.role !== 'ADMIN')
       throw new UnauthorizedException('Not authorized');
@@ -276,8 +282,8 @@ export class AdminService {
           sourceId: request.id,
           credit: request.amount,
           balanceAfter: wallet.withdrawableBalance,
-          description: `Withdrawal rejected and refunded: ${reason}`
-        }
+          description: `Withdrawal rejected and refunded: ${reason}`,
+        },
       });
 
       const updated = await tx.withdrawalRequest.update({
@@ -292,8 +298,8 @@ export class AdminService {
           action: 'WITHDRAWAL_REJECTED',
           entityType: 'WithdrawalRequest',
           entityId: reqId,
-          newValue: { status: 'REJECTED', reason }
-        }
+          newValue: { status: 'REJECTED', reason },
+        },
       });
 
       return updated;
@@ -337,10 +343,10 @@ export class AdminService {
     const admin = await this.prisma.user.findUnique({ where: { id: adminId } });
     if (!admin || admin.role !== 'ADMIN')
       throw new UnauthorizedException('Not authorized');
-      
+
     const configs = await this.prisma.systemConfig.findMany();
     const result: Record<string, any> = {};
-    configs.forEach(c => {
+    configs.forEach((c) => {
       result[c.key] = c.valueJson;
     });
     return result;

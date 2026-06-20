@@ -6,6 +6,6 @@ import { ChallengesGateway } from './challenges.gateway';
 @Module({
   providers: [ChallengesService, ChallengesGateway],
   controllers: [ChallengesController],
-  exports: [ChallengesService, ChallengesGateway]
+  exports: [ChallengesService, ChallengesGateway],
 })
 export class ChallengesModule {}

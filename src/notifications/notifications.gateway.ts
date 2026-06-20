@@ -18,7 +18,7 @@ export class NotificationsGateway
 
   handleConnection(client: Socket) {
     console.log(`Notification client connected: ${client.id}`);
-    
+
     // Check if token exists, we can extract user ID and join room
     // Here we assume the client will emit 'join_notifications'
   }
@@ -29,14 +29,24 @@ export class NotificationsGateway
 
   async sendNotificationToUser(userId: string, notification: any) {
     try {
-      const sender = notification.senderId ? await this.prisma.user.findUnique({ where: { id: notification.senderId } }) : null;
+      const sender = notification.senderId
+        ? await this.prisma.user.findUnique({
+            where: { id: notification.senderId },
+          })
+        : null;
       const meta = notification.metaData || {};
       const payload = {
         id: notification.id,
         type: notification.type,
         actorId: notification.senderId,
-        actorName: sender ? sender.name : (notification.senderAvatar ? 'User' : 'User'),
-        actorAvatar: sender ? sender.avatar : (notification.senderAvatar || 'https://i.pravatar.cc/150'),
+        actorName: sender
+          ? sender.name
+          : notification.senderAvatar
+            ? 'User'
+            : 'User',
+        actorAvatar: sender
+          ? sender.avatar
+          : notification.senderAvatar || 'https://i.pravatar.cc/150',
         targetType: meta.targetType || (notification.postId ? 'REEL' : 'USER'),
         reelId: notification.postId,
         reelThumbnail: meta.reelThumbnail,
@@ -64,8 +74,12 @@ export class NotificationsGateway
       const unreadCount = await this.prisma.notification.count({
         where: { userId, isRead: false, isActive: true },
       });
-      this.server.to(`user_${userId}`).emit('notification:unread-count', { count: unreadCount });
-      this.server.emit(`notification:unread-count_${userId}`, { count: unreadCount }); // Fallback
+      this.server
+        .to(`user_${userId}`)
+        .emit('notification:unread-count', { count: unreadCount });
+      this.server.emit(`notification:unread-count_${userId}`, {
+        count: unreadCount,
+      }); // Fallback
     } catch (error) {
       console.error('Failed to emit notification via socket:', error);
     }

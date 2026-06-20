@@ -83,22 +83,26 @@ export class AuthService {
       }
 
       // Generate a unique 6-character referral code
-      const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase() + Math.floor(Math.random() * 100);
-      
+      const referralCode =
+        Math.random().toString(36).substring(2, 8).toUpperCase() +
+        Math.floor(Math.random() * 100);
+
       let referredById = null;
 
       // Handle Referral Logic
       if (dto.referredByCode) {
         const referrer = await this.prisma.user.findUnique({
-          where: { referralCode: dto.referredByCode }
+          where: { referralCode: dto.referredByCode },
         });
-        
+
         if (referrer) {
           referredById = referrer.id;
         }
       }
 
-      const dobDate = dto.dob ? new Date(dto.dob.split('/').reverse().join('-')) : null;
+      const dobDate = dto.dob
+        ? new Date(dto.dob.split('/').reverse().join('-'))
+        : null;
 
       user = await this.prisma.user.create({
         data: {
@@ -124,8 +128,8 @@ export class AuthService {
           data: {
             referrerId: referredById,
             referredId: user.id,
-            status: 'PENDING'
-          }
+            status: 'PENDING',
+          },
         });
       }
     }
@@ -138,7 +142,7 @@ export class AuthService {
     const payload = { sub: user.id, role: user.role };
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
-    
+
     // Hash refresh token
     const tokenHash = await bcrypt.hash(refreshToken, 10);
 
@@ -171,7 +175,8 @@ export class AuthService {
     if (!phone) throw new BadRequestException('Phone is required');
     let user = await this.prisma.user.findFirst({ where: { phone } });
     if (!user) {
-      const finalUsername = 'user_' + Math.random().toString(36).substring(2, 10);
+      const finalUsername =
+        'user_' + Math.random().toString(36).substring(2, 10);
       user = await this.prisma.user.create({
         data: {
           phone,
@@ -183,12 +188,12 @@ export class AuthService {
       await this.prisma.wallet.create({ data: { userId: user.id } });
       await this.prisma.userPreference.create({ data: { userId: user.id } });
     }
-    
+
     const payload = { sub: user.id, role: user.role };
     const accessToken = this.jwtService.sign(payload);
     const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
     const tokenHash = await bcrypt.hash(refreshToken, 10);
-    
+
     await this.prisma.session.create({
       data: {
         userId: user.id,
@@ -227,9 +232,9 @@ export class AuthService {
       const user = await this.prisma.user.findFirst({
         where: {
           OR: [
-            { phone: { in: possiblePhones } }, 
+            { phone: { in: possiblePhones } },
             { email: dto.identifier },
-            { username: dto.identifier }
+            { username: dto.identifier },
           ],
         },
       });
@@ -243,8 +248,7 @@ export class AuthService {
         return {
           exists: true,
           field: 'identifier',
-          message:
-            'This account is already registered. Please login instead.',
+          message: 'This account is already registered. Please login instead.',
           userId: user.id,
           phone: user.phone,
           isProfileComplete: user.isProfileComplete,
@@ -325,7 +329,11 @@ export class AuthService {
     }
 
     const sessions = await this.prisma.session.findMany({
-      where: { userId: decoded.sub, revoked: false, expiresAt: { gt: new Date() } },
+      where: {
+        userId: decoded.sub,
+        revoked: false,
+        expiresAt: { gt: new Date() },
+      },
     });
 
     let validSession = null;

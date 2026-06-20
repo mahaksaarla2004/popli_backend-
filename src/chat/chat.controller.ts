@@ -56,7 +56,11 @@ export class ChatController {
 
   @Post(':id/messages/:messageId/read')
   @ApiOperation({ summary: 'Mark specific message as read' })
-  markMessageRead(@Param('id') chatId: string, @Param('messageId') messageId: string, @Req() req: any) {
+  markMessageRead(
+    @Param('id') chatId: string,
+    @Param('messageId') messageId: string,
+    @Req() req: any,
+  ) {
     return this.chatService.markMessageRead(chatId, messageId, req.user.id);
   }
 
@@ -68,7 +72,11 @@ export class ChatController {
 
   @Delete(':id/messages/:messageId')
   @ApiOperation({ summary: 'Delete (unsend) a message' })
-  deleteMessage(@Param('id') chatId: string, @Param('messageId') messageId: string, @Req() req: any) {
+  deleteMessage(
+    @Param('id') chatId: string,
+    @Param('messageId') messageId: string,
+    @Req() req: any,
+  ) {
     return this.chatService.deleteMessage(chatId, messageId, req.user.id);
   }
 
@@ -80,6 +88,11 @@ export class ChatController {
     @Req() req: any,
     @Body('emoji') emoji: string | null,
   ) {
-    return this.chatService.reactToMessage(chatId, messageId, req.user.id, emoji);
+    return this.chatService.reactToMessage(
+      chatId,
+      messageId,
+      req.user.id,
+      emoji,
+    );
   }
 }

@@ -10,7 +10,9 @@ import {
 import { Server, Socket } from 'socket.io';
 
 @WebSocketGateway({ cors: { origin: '*' }, namespace: '/challenges' })
-export class ChallengesGateway implements OnGatewayConnection, OnGatewayDisconnect {
+export class ChallengesGateway
+  implements OnGatewayConnection, OnGatewayDisconnect
+{
   @WebSocketServer()
   server: Server;
 
@@ -28,7 +30,9 @@ export class ChallengesGateway implements OnGatewayConnection, OnGatewayDisconne
     @MessageBody() challengeId: string,
   ) {
     client.join(`challenge_${challengeId}`);
-    console.log(`[ChallengesGateway] Client ${client.id} joined challenge_${challengeId}`);
+    console.log(
+      `[ChallengesGateway] Client ${client.id} joined challenge_${challengeId}`,
+    );
   }
 
   @SubscribeMessage('leaveChallengeRoom')
@@ -37,27 +41,35 @@ export class ChallengesGateway implements OnGatewayConnection, OnGatewayDisconne
     @MessageBody() challengeId: string,
   ) {
     client.leave(`challenge_${challengeId}`);
-    console.log(`[ChallengesGateway] Client ${client.id} left challenge_${challengeId}`);
+    console.log(
+      `[ChallengesGateway] Client ${client.id} left challenge_${challengeId}`,
+    );
   }
 
   /**
    * Broadcasts when a new user joins the challenge
    */
   broadcastParticipantJoined(challengeId: string, count: number) {
-    this.server.to(`challenge_${challengeId}`).emit('participant_joined', { count });
+    this.server
+      .to(`challenge_${challengeId}`)
+      .emit('participant_joined', { count });
   }
 
   /**
    * Broadcasts when the leaderboard needs to refresh or score updates
    */
   broadcastLeaderboardUpdate(challengeId: string) {
-    this.server.to(`challenge_${challengeId}`).emit('leaderboard_updated', { challengeId });
+    this.server
+      .to(`challenge_${challengeId}`)
+      .emit('leaderboard_updated', { challengeId });
   }
 
   /**
    * Broadcasts challenge status changes (e.g. COMPLETED, PAUSED)
    */
   broadcastStatusChange(challengeId: string, status: string) {
-    this.server.to(`challenge_${challengeId}`).emit('status_changed', { status });
+    this.server
+      .to(`challenge_${challengeId}`)
+      .emit('status_changed', { status });
   }
 }

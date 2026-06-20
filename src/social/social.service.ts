@@ -52,7 +52,7 @@ export class SocialService {
             body: `started following you.`,
             senderId: followerId,
             senderAvatar: follower.avatar || 'https://i.pravatar.cc/150',
-            metaData: { targetType: 'USER' }
+            metaData: { targetType: 'USER' },
           },
         });
       }
@@ -108,7 +108,12 @@ export class SocialService {
 
       for (const follow of existingFollows) {
         await this.prisma.follows.delete({
-          where: { followerId_followingId: { followerId: follow.followerId, followingId: follow.followingId } },
+          where: {
+            followerId_followingId: {
+              followerId: follow.followerId,
+              followingId: follow.followingId,
+            },
+          },
         });
         await this.prisma.user.update({
           where: { id: follow.followerId },

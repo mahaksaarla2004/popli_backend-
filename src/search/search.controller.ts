@@ -13,4 +13,11 @@ export class SearchController {
     if (!query) return { users: [], reels: [] };
     return this.searchService.searchAll(query);
   }
+
+  @Get('locations')
+  @ApiOperation({ summary: 'Search for locations (OpenStreetMap)' })
+  searchLocations(@Query('q') query: string) {
+    if (!query) return [];
+    return this.searchService.searchLocations(query);
+  }
 }

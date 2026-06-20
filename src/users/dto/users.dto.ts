@@ -22,7 +22,6 @@ export class UpdateProfileDto {
   @IsOptional()
   phone?: string;
 
-
   @ApiPropertyOptional()
   @IsString()
   @IsOptional()
@@ -68,8 +67,6 @@ export class UpdateProfileDto {
   @IsArray()
   @IsOptional()
   socialLinks?: any[];
-
-
 }
 
 export class UpdatePreferencesDto {

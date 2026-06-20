@@ -2,7 +2,7 @@ import {
   Injectable,
   NotFoundException,
   UnauthorizedException,
-  Optional
+  Optional,
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { NotificationsGateway } from '../notifications/notifications.gateway';
@@ -18,7 +18,7 @@ export class StoriesService {
   constructor(
     private prisma: PrismaService,
     @Optional() private notificationsGateway?: NotificationsGateway,
-    @Optional() private chatGateway?: ChatGateway
+    @Optional() private chatGateway?: ChatGateway,
   ) {}
 
   async createStory(creatorId: string, dto: CreateStoryDto) {
@@ -40,20 +40,24 @@ export class StoriesService {
       // 1. Verify original story exists, not expired
       const originalStory = await this.prisma.story.findUnique({
         where: { id: dto.originalStoryId },
-        include: { creator: true }
+        include: { creator: true },
       });
 
       if (!originalStory) {
-        throw new NotFoundException('Original story not found or has been deleted');
+        throw new NotFoundException(
+          'Original story not found or has been deleted',
+        );
       }
 
       if (new Date() > originalStory.expiresAt) {
-        throw new UnauthorizedException('Original story has expired and cannot be shared');
+        throw new UnauthorizedException(
+          'Original story has expired and cannot be shared',
+        );
       }
 
       // Permissions check: Since sharing is triggered from mentions, and we don't have sharesAllowed natively, we just rely on the API unless isCloseFriends blocks it
       if (originalStory.isCloseFriends) {
-         throw new UnauthorizedException('Cannot reshare a Close Friends story');
+        throw new UnauthorizedException('Cannot reshare a Close Friends story');
       }
 
       // Reshare Loop Protection: Always point to root original story
@@ -83,7 +87,11 @@ export class StoriesService {
           originalOwnerId: rootOriginalOwnerId,
           originalOwnerUsername: rootOriginalOwnerUsername,
         },
-        include: { creator: { select: { id: true, username: true, avatar: true, name: true } } }
+        include: {
+          creator: {
+            select: { id: true, username: true, avatar: true, name: true },
+          },
+        },
       }),
       this.prisma.storyArchive.create({
         data: {
@@ -99,15 +107,25 @@ export class StoriesService {
     ]);
 
     // Handle Mentions Async without blocking
-    let finalMentionUserIds = dto.mentionedUserIds ? [...dto.mentionedUserIds] : [];
+    let finalMentionUserIds = dto.mentionedUserIds
+      ? [...dto.mentionedUserIds]
+      : [];
     if (rootOriginalOwnerId && rootOriginalOwnerId !== creatorId) {
       if (!finalMentionUserIds.includes(rootOriginalOwnerId)) {
         finalMentionUserIds.push(rootOriginalOwnerId);
       }
     }
 
-    if ((dto.mentionedUsernames && dto.mentionedUsernames.length > 0) || finalMentionUserIds.length > 0) {
-      this.processStoryMentions(story, creatorId, dto.mentionedUsernames, finalMentionUserIds).catch(err => {
+    if (
+      (dto.mentionedUsernames && dto.mentionedUsernames.length > 0) ||
+      finalMentionUserIds.length > 0
+    ) {
+      this.processStoryMentions(
+        story,
+        creatorId,
+        dto.mentionedUsernames,
+        finalMentionUserIds,
+      ).catch((err) => {
         console.error('Failed to process story mentions:', err);
       });
     }
@@ -115,21 +133,28 @@ export class StoriesService {
     return story;
   }
 
-  private async processStoryMentions(story: any, creatorId: string, usernames?: string[], userIds?: string[]) {
+  private async processStoryMentions(
+    story: any,
+    creatorId: string,
+    usernames?: string[],
+    userIds?: string[],
+  ) {
     try {
       // Find valid users matching either ID or Username
       const validUsers = await this.prisma.user.findMany({
         where: {
           OR: [
             { id: { in: userIds || [] } },
-            { username: { in: usernames || [] } }
-          ]
+            { username: { in: usernames || [] } },
+          ],
         },
-        select: { id: true, username: true }
+        select: { id: true, username: true },
       });
 
       // Filter out duplicates and self-mentions
-      const uniqueValidUserIds = Array.from(new Set(validUsers.map(u => u.id))).filter(id => id !== creatorId);
+      const uniqueValidUserIds = Array.from(
+        new Set(validUsers.map((u) => u.id)),
+      ).filter((id) => id !== creatorId);
 
       for (const mentionedUserId of uniqueValidUserIds) {
         // Wrap each user process in its own try/catch to isolate failures
@@ -144,7 +169,7 @@ export class StoriesService {
               postId: story.id, // Store story ID here
               title: 'Story Mention',
               body: `@${story.creator.username} mentioned you in their story.`,
-            }
+            },
           });
 
           // 2. Emit Notification via Gateway (Optional chaining to avoid crashes if gateway is missing)
@@ -161,19 +186,19 @@ export class StoriesService {
               AND: [
                 { participants: { some: { userId: creatorId } } },
                 { participants: { some: { userId: mentionedUserId } } },
-                { isGroup: false }
-              ]
-            }
+                { isGroup: false },
+              ],
+            },
           });
 
           if (!chat) {
             chat = await this.prisma.chat.create({
               data: {
                 isGroup: false,
-                participants: { 
-                  create: [{ userId: creatorId }, { userId: mentionedUserId }] 
-                }
-              }
+                participants: {
+                  create: [{ userId: creatorId }, { userId: mentionedUserId }],
+                },
+              },
             });
           }
 
@@ -187,27 +212,36 @@ export class StoriesService {
               mediaUrl: story.mediaUrl,
               text: 'Mentioned you in their story',
             },
-            include: { sender: { select: { id: true, username: true, avatar: true, name: true } } }
+            include: {
+              sender: {
+                select: { id: true, username: true, avatar: true, name: true },
+              },
+            },
           });
 
           // Update Chat
           await this.prisma.chat.update({
             where: { id: chat.id },
-            data: { lastMessage: 'Mentioned you in their story', lastMessageAt: new Date() }
+            data: {
+              lastMessage: 'Mentioned you in their story',
+              lastMessageAt: new Date(),
+            },
           });
 
           await this.prisma.chatParticipant.updateMany({
             where: { chatId: chat.id, userId: mentionedUserId },
-            data: { unreadCount: { increment: 1 } }
+            data: { unreadCount: { increment: 1 } },
           });
 
           // 5. Emit Message via ChatGateway
           if (this.chatGateway) {
             this.chatGateway.server.to(chat.id).emit('new_message', message);
           }
-
         } catch (innerErr) {
-          console.error(`Failed to process mention for user ${mentionedUserId}:`, innerErr);
+          console.error(
+            `Failed to process mention for user ${mentionedUserId}:`,
+            innerErr,
+          );
         }
       }
     } catch (e) {
@@ -219,10 +253,10 @@ export class StoriesService {
     // Get the list of user IDs that this user follows
     const following = await this.prisma.follows.findMany({
       where: { followerId: userId },
-      select: { followingId: true }
+      select: { followingId: true },
     });
     const followingIds = following.map((f: any) => f.followingId);
-    
+
     // Include user's own ID
     const validCreatorIds = [...followingIds, userId];
 
@@ -230,7 +264,7 @@ export class StoriesService {
     return this.prisma.story.findMany({
       where: {
         expiresAt: { gt: new Date() },
-        creatorId: { in: validCreatorIds }
+        creatorId: { in: validCreatorIds },
       },
       include: {
         creator: { select: { id: true, username: true, avatar: true } },
@@ -244,7 +278,7 @@ export class StoriesService {
   async markViewed(storyId: string, userId: string) {
     const story = await this.prisma.story.findUnique({
       where: { id: storyId },
-      select: { creatorId: true }
+      select: { creatorId: true },
     });
 
     if (story && story.creatorId === userId) {
@@ -276,7 +310,7 @@ export class StoriesService {
           storyId,
           layerId: dto.layerId,
           userId,
-        }
+        },
       },
       update: {
         type: dto.type,
@@ -288,7 +322,7 @@ export class StoriesService {
         userId,
         type: dto.type,
         value: dto.value,
-      }
+      },
     });
   }
 
@@ -296,8 +330,10 @@ export class StoriesService {
     return this.prisma.storyInteraction.findMany({
       where: { storyId },
       include: {
-        user: { select: { id: true, username: true, avatar: true, name: true } }
-      }
+        user: {
+          select: { id: true, username: true, avatar: true, name: true },
+        },
+      },
     });
   }
 
@@ -316,10 +352,10 @@ export class StoriesService {
       where: { storyId },
       include: {
         user: {
-          select: { id: true, username: true, name: true, avatar: true }
-        }
+          select: { id: true, username: true, name: true, avatar: true },
+        },
       },
-      orderBy: { viewedAt: 'desc' }
+      orderBy: { viewedAt: 'desc' },
     });
   }
 
@@ -355,10 +391,10 @@ export class StoriesService {
     // Fetch the actual stories from the archive
     return this.prisma.storyArchive.findMany({
       where: {
-        id: { in: highlight.storyIds }
+        id: { in: highlight.storyIds },
       },
       // Preserve order from highlight.storyIds if possible, or order by createdAt
-      orderBy: { createdAt: 'asc' }
+      orderBy: { createdAt: 'asc' },
     });
   }
 
@@ -384,7 +420,9 @@ export class StoriesService {
       throw new NotFoundException('Highlight not found');
     }
     if (highlight.creatorId !== userId) {
-      throw new UnauthorizedException('You can only delete your own highlights');
+      throw new UnauthorizedException(
+        'You can only delete your own highlights',
+      );
     }
 
     return this.prisma.storyHighlight.delete({

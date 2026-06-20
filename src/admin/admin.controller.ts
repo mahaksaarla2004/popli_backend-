@@ -123,7 +123,11 @@ export class AdminController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Reject a withdrawal request' })
-  rejectWithdrawal(@Param('id') reqId: string, @Body('reason') reason: string, @Req() req: any) {
+  rejectWithdrawal(
+    @Param('id') reqId: string,
+    @Body('reason') reason: string,
+    @Req() req: any,
+  ) {
     return this.adminService.rejectWithdrawal(reqId, req.user.id, reason);
   }
 
@@ -165,7 +169,7 @@ export class AdminController {
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Update a system config' })
-  updateConfig(@Body() body: { key: string, value: any }, @Req() req: any) {
+  updateConfig(@Body() body: { key: string; value: any }, @Req() req: any) {
     return this.adminService.updateConfig(body.key, body.value, req.user.id);
   }
 }

@@ -21,7 +21,7 @@ export class ReelsService {
     private chatService: ChatService,
     private notificationsGateway: NotificationsGateway,
     private hashtagsService: HashtagsService,
-    private challengesGateway: ChallengesGateway
+    private challengesGateway: ChallengesGateway,
   ) {}
 
   async createReel(creatorId: string, dto: CreateReelDto) {
@@ -32,23 +32,54 @@ export class ReelsService {
       } catch (e) {}
     }
 
-    const { taggedUserIds, challengeId, ...restDto } = dto;
+    const {
+      taggedUserIds: rawTaggedUserIds,
+      challengeId,
+      location,
+      ...restDto
+    } = dto;
+
+    // Validate Tags: max 10, unique, no blocked users
+    let validTaggedUserIds: string[] = [];
+    if (rawTaggedUserIds && rawTaggedUserIds.length > 0) {
+      const uniqueTags = [...new Set(rawTaggedUserIds)].slice(0, 10);
+
+      // Filter out blocked users (creator blocked by them, or creator blocked them)
+      const blocks = await this.prisma.block.findMany({
+        where: {
+          OR: [
+            { blockerId: creatorId, blockedId: { in: uniqueTags } },
+            { blockerId: { in: uniqueTags }, blockedId: creatorId },
+          ],
+        },
+      });
+      const blockedIds = new Set(
+        blocks.map((b) =>
+          b.blockerId === creatorId ? b.blockedId : b.blockerId,
+        ),
+      );
+      validTaggedUserIds = uniqueTags.filter((id) => !blockedIds.has(id));
+    }
 
     if (challengeId) {
       const challenge = await this.prisma.challenge.findUnique({
         where: { id: challengeId },
-        select: { maxSubmissionsPerUser: true, status: true }
+        select: { maxSubmissionsPerUser: true, status: true },
       });
       if (!challenge || challenge.status !== 'ACTIVE') {
-        throw new BadRequestException('Challenge is not active or does not exist');
+        throw new BadRequestException(
+          'Challenge is not active or does not exist',
+        );
       }
 
       const existingReelsCount = await this.prisma.reel.count({
-        where: { creatorId, challengeId }
+        where: { creatorId, challengeId },
       });
 
       if (existingReelsCount >= challenge.maxSubmissionsPerUser) {
-        throw new BadRequestException(`You have reached the maximum allowed submissions (${challenge.maxSubmissionsPerUser}) for this challenge`);
+        throw new BadRequestException(
+          `You have reached the maximum allowed submissions (${challenge.maxSubmissionsPerUser}) for this challenge`,
+        );
       }
     }
 
@@ -58,9 +89,19 @@ export class ReelsService {
         layersData,
         creatorId,
         ...(challengeId && { challengeId }),
-        ...(taggedUserIds && taggedUserIds.length > 0 && {
+        ...(validTaggedUserIds.length > 0 && {
           taggedUsers: {
-            connect: taggedUserIds.map((id) => ({ id })),
+            connect: validTaggedUserIds.map((id) => ({ id })),
+          },
+        }),
+        ...(location && {
+          location: {
+            create: {
+              name: location.locationName,
+              latitude: location.latitude,
+              longitude: location.longitude,
+              placeId: location.placeId,
+            },
           },
         }),
       },
@@ -68,9 +109,10 @@ export class ReelsService {
 
     if (challengeId) {
       // Auto-join the challenge if they aren't already a participant
-      const existingParticipant = await this.prisma.challengeParticipant.findUnique({
-        where: { challengeId_userId: { challengeId, userId: creatorId } },
-      });
+      const existingParticipant =
+        await this.prisma.challengeParticipant.findUnique({
+          where: { challengeId_userId: { challengeId, userId: creatorId } },
+        });
       if (!existingParticipant) {
         await this.prisma.challengeParticipant.create({
           data: { challengeId, userId: creatorId },
@@ -82,14 +124,14 @@ export class ReelsService {
       }
     }
 
-    if (taggedUserIds && taggedUserIds.length > 0) {
+    if (validTaggedUserIds.length > 0) {
       const creator = await this.prisma.user.findUnique({
         where: { id: creatorId },
         select: { id: true, name: true, avatar: true },
       });
 
       if (creator) {
-        for (const taggedUserId of taggedUserIds) {
+        for (const taggedUserId of validTaggedUserIds) {
           if (taggedUserId !== creatorId) {
             // Send Notification
             await this.prisma.notification.create({
@@ -105,9 +147,13 @@ export class ReelsService {
 
             // Send Chat Message
             try {
-              const chat = await this.chatService.getOrCreateChat(creatorId, taggedUserId);
+              const chat = await this.chatService.getOrCreateChat(
+                creatorId,
+                taggedUserId,
+              );
               await this.chatService.sendMessage(chat.id, creatorId, {
-                text: `Hey! I tagged you in my new post/reel.`,
+                text: `Hey! I tagged you in my new post/reel. /reels/${reel.id}`,
+                mediaUrl: reel.mediaUrl,
               });
             } catch (err) {
               console.error('Failed to send chat message for tagging', err);
@@ -120,25 +166,29 @@ export class ReelsService {
     // Process hashtags asynchronously
     if (dto.description) {
       const hashtags = extractHashtags(dto.description);
-      this.hashtagsService.processHashtags(reel.id, hashtags).catch(err => {
+      this.hashtagsService.processHashtags(reel.id, hashtags).catch((err) => {
         console.error('Failed to process hashtags for reel', err);
       });
     }
 
     // Trigger referral check (first post requirement)
-    checkAndProcessReferral(this.prisma, creatorId).catch(err => {
+    checkAndProcessReferral(this.prisma, creatorId).catch((err) => {
       console.error('Referral process error on reel creation', err);
     });
 
     return reel;
   }
 
-  async getFeed(cursor: string | null = null, limit: number = 10, category?: string) {
+  async getFeed(
+    cursor: string | null = null,
+    limit: number = 10,
+    category?: string,
+  ) {
     const where: any = {
       privacy: { in: ['Public', 'Everyone'] }, // Show public reels in the general feed
-      ...(category && category !== 'all' ? { category } : {})
+      ...(category && category !== 'all' ? { category } : {}),
     };
-    
+
     // Using Prisma cursor-based pagination
     const reels = await this.prisma.reel.findMany({
       where,
@@ -147,11 +197,18 @@ export class ReelsService {
       orderBy: { createdAt: 'desc' },
       include: {
         creator: {
-          select: { id: true, name: true, username: true, avatar: true, isVerified: true },
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            avatar: true,
+            isVerified: true,
+          },
         },
         taggedUsers: {
           select: { id: true, username: true, avatar: true },
         },
+        location: true,
       },
     });
 
@@ -163,18 +220,23 @@ export class ReelsService {
 
     return {
       reels,
-      nextCursor
+      nextCursor,
     };
   }
 
-  async getExploreFeed(page: number = 1, limit: number = 10, category?: string, excludeIds: string[] = []) {
+  async getExploreFeed(
+    page: number = 1,
+    limit: number = 10,
+    category?: string,
+    excludeIds: string[] = [],
+  ) {
     // We ignore skip (page) for the database query because we are randomizing
     // We fetch a larger pool (e.g., 50) of recent reels that haven't been seen yet
     const where: any = {
       privacy: { in: ['Public', 'Everyone'] }, // Show public reels in explore
-      ...(category && category !== 'all' ? { category } : {})
+      ...(category && category !== 'all' ? { category } : {}),
     };
-    
+
     if (excludeIds.length > 0) {
       where.id = { notIn: excludeIds };
     }
@@ -185,11 +247,18 @@ export class ReelsService {
       orderBy: { createdAt: 'desc' }, // Get recent ones to keep fresh
       include: {
         creator: {
-          select: { id: true, name: true, username: true, avatar: true, isVerified: true },
+          select: {
+            id: true,
+            name: true,
+            username: true,
+            avatar: true,
+            isVerified: true,
+          },
         },
         taggedUsers: {
           select: { id: true, username: true, avatar: true },
         },
+        location: true,
       },
     });
 
@@ -199,7 +268,7 @@ export class ReelsService {
       const j = Math.floor(Math.random() * (i + 1));
       [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
     }
-    
+
     // Return the requested limit
     return shuffled.slice(0, limit);
   }
@@ -211,14 +280,14 @@ export class ReelsService {
       where: { followerId: userId },
       select: { followingId: true },
     });
-    const followingIds = follows.map(f => f.followingId);
+    const followingIds = follows.map((f) => f.followingId);
 
     console.log(`[getFollowingFeed] User ${userId} follows:`, followingIds);
 
     const reels = await this.prisma.reel.findMany({
-      where: { 
+      where: {
         creatorId: { in: followingIds },
-        privacy: { in: ['Public', 'Friends'] } // Following feed can show friends-only posts
+        privacy: { in: ['Public', 'Friends'] }, // Following feed can show friends-only posts
       },
       skip,
       take: limit,
@@ -240,6 +309,7 @@ export class ReelsService {
             avatar: true,
           },
         },
+        location: true,
       },
     });
 
@@ -268,12 +338,13 @@ export class ReelsService {
             avatar: true,
           },
         },
+        location: true,
       },
     });
   }
 
   async getReelById(reelId: string) {
-    console.log("getReelById called with:", reelId);
+    console.log('getReelById called with:', reelId);
     const reel = await this.prisma.reel.findUnique({
       where: { id: reelId },
       include: {
@@ -293,6 +364,7 @@ export class ReelsService {
             avatar: true,
           },
         },
+        location: true,
       },
     });
 
@@ -322,10 +394,10 @@ export class ReelsService {
   }
 
   async toggleLike(reelId: string, userId: string) {
-    const reelCheck = await this.prisma.reel.findUnique({ where: { id: reelId } });
+    const reelCheck = await this.prisma.reel.findUnique({
+      where: { id: reelId },
+    });
     if (!reelCheck) throw new NotFoundException('Reel not found');
-    
-
 
     const existingLike = await this.prisma.like.findUnique({
       where: { reelId_userId: { reelId, userId } },
@@ -341,12 +413,19 @@ export class ReelsService {
         where: { id: reel.creatorId },
         data: { totalLikesReceived: { decrement: 1 } },
       });
-      
+
       if (reel.challengeId) {
-        await this.prisma.challengeParticipant.update({
-          where: { challengeId_userId: { challengeId: reel.challengeId, userId: reel.creatorId } },
-          data: { score: { decrement: 5 } }
-        }).catch(() => null);
+        await this.prisma.challengeParticipant
+          .update({
+            where: {
+              challengeId_userId: {
+                challengeId: reel.challengeId,
+                userId: reel.creatorId,
+              },
+            },
+            data: { score: { decrement: 5 } },
+          })
+          .catch(() => null);
         this.challengesGateway.broadcastLeaderboardUpdate(reel.challengeId);
       }
 
@@ -364,14 +443,23 @@ export class ReelsService {
         });
 
         if (reel.challengeId) {
-          await this.prisma.challengeParticipant.update({
-            where: { challengeId_userId: { challengeId: reel.challengeId, userId: reel.creatorId } },
-            data: { score: { increment: 5 } }
-          }).catch(() => null);
+          await this.prisma.challengeParticipant
+            .update({
+              where: {
+                challengeId_userId: {
+                  challengeId: reel.challengeId,
+                  userId: reel.creatorId,
+                },
+              },
+              data: { score: { increment: 5 } },
+            })
+            .catch(() => null);
           this.challengesGateway.broadcastLeaderboardUpdate(reel.challengeId);
         }
 
-        const user = await this.prisma.user.findUnique({ where: { id: userId } });
+        const user = await this.prisma.user.findUnique({
+          where: { id: userId },
+        });
 
         if (reel.creatorId !== userId && user) {
           try {
@@ -384,10 +472,16 @@ export class ReelsService {
                 senderId: userId,
                 senderAvatar: user.avatar || 'https://i.pravatar.cc/150',
                 postId: reelId,
-                metaData: { targetType: 'REEL', reelThumbnail: reelCheck.thumbnailUrl }
+                metaData: {
+                  targetType: 'REEL',
+                  reelThumbnail: reelCheck.thumbnailUrl,
+                },
               },
             });
-            this.notificationsGateway.sendNotificationToUser(reel.creatorId, notification);
+            this.notificationsGateway.sendNotificationToUser(
+              reel.creatorId,
+              notification,
+            );
           } catch (error) {
             console.error('Failed to create like notification:', error);
           }
@@ -456,10 +550,17 @@ export class ReelsService {
     });
 
     if (reel.challengeId) {
-      await this.prisma.challengeParticipant.update({
-        where: { challengeId_userId: { challengeId: reel.challengeId, userId: reel.creatorId } },
-        data: { score: { increment: 10 } }
-      }).catch(() => null);
+      await this.prisma.challengeParticipant
+        .update({
+          where: {
+            challengeId_userId: {
+              challengeId: reel.challengeId,
+              userId: reel.creatorId,
+            },
+          },
+          data: { score: { increment: 10 } },
+        })
+        .catch(() => null);
       this.challengesGateway.broadcastLeaderboardUpdate(reel.challengeId);
     }
 
@@ -476,10 +577,17 @@ export class ReelsService {
             senderAvatar: comment.user.avatar || 'https://i.pravatar.cc/150',
             postId: reelId,
             commentId: comment.id,
-            metaData: { targetType: 'REEL', reelThumbnail: reel.thumbnailUrl, commentText: dto.text }
+            metaData: {
+              targetType: 'REEL',
+              reelThumbnail: reel.thumbnailUrl,
+              commentText: dto.text,
+            },
           },
         });
-        this.notificationsGateway.sendNotificationToUser(reel.creatorId, notification);
+        this.notificationsGateway.sendNotificationToUser(
+          reel.creatorId,
+          notification,
+        );
       } catch (error) {
         console.error('Failed to create comment notification:', error);
       }
@@ -510,10 +618,17 @@ export class ReelsService {
               postId: reelId,
               commentId: parentComment.id,
               replyId: comment.id,
-              metaData: { targetType: 'REEL', reelThumbnail: reel.thumbnailUrl, commentText: dto.text }
+              metaData: {
+                targetType: 'REEL',
+                reelThumbnail: reel.thumbnailUrl,
+                commentText: dto.text,
+              },
             },
           });
-          this.notificationsGateway.sendNotificationToUser(parentComment.userId, notification);
+          this.notificationsGateway.sendNotificationToUser(
+            parentComment.userId,
+            notification,
+          );
         }
       } catch (error) {
         console.error('Failed to create reply notification:', error);
@@ -527,7 +642,8 @@ export class ReelsService {
           where: { username: { in: mentions } },
         });
         for (const mUser of mentionedUsers) {
-          if (mUser.id !== userId) { // Self Mention Protection
+          if (mUser.id !== userId) {
+            // Self Mention Protection
             const notification = await this.prisma.notification.create({
               data: {
                 userId: mUser.id,
@@ -535,14 +651,22 @@ export class ReelsService {
                 title: 'You were mentioned',
                 body: `${comment.user.name} mentioned you in a comment.`,
                 senderId: userId,
-                senderAvatar: comment.user.avatar || 'https://i.pravatar.cc/150',
+                senderAvatar:
+                  comment.user.avatar || 'https://i.pravatar.cc/150',
                 postId: reelId,
                 commentId: dto.parentId ? dto.parentId : comment.id,
                 replyId: dto.parentId ? comment.id : undefined,
-                metaData: { targetType: 'REEL', reelThumbnail: reel.thumbnailUrl, commentText: dto.text }
+                metaData: {
+                  targetType: 'REEL',
+                  reelThumbnail: reel.thumbnailUrl,
+                  commentText: dto.text,
+                },
               },
             });
-            this.notificationsGateway.sendNotificationToUser(mUser.id, notification);
+            this.notificationsGateway.sendNotificationToUser(
+              mUser.id,
+              notification,
+            );
           }
         }
       } catch (error) {
@@ -559,7 +683,7 @@ export class ReelsService {
       orderBy: { createdAt: 'desc' },
       include: {
         likes: {
-          where: { userId }
+          where: { userId },
         },
         user: {
           select: {
@@ -574,7 +698,7 @@ export class ReelsService {
           orderBy: { createdAt: 'asc' },
           include: {
             likes: {
-              where: { userId }
+              where: { userId },
             },
             user: {
               select: {
@@ -594,11 +718,13 @@ export class ReelsService {
       ...c,
       isLiked: c.likes && c.likes.length > 0,
       likes: undefined, // remove from response
-      replies: c.replies ? c.replies.map((r: any) => ({
-        ...r,
-        isLiked: r.likes && r.likes.length > 0,
-        likes: undefined
-      })) : []
+      replies: c.replies
+        ? c.replies.map((r: any) => ({
+            ...r,
+            isLiked: r.likes && r.likes.length > 0,
+            likes: undefined,
+          }))
+        : [],
     });
 
     return comments.map(mapCommentWithLike);
@@ -615,7 +741,7 @@ export class ReelsService {
         where: { id: commentId },
         data: { likesCount: { decrement: 1 } },
       });
-      
+
       // Soft delete like notification
       try {
         await this.prisma.notification.updateMany({
@@ -627,9 +753,12 @@ export class ReelsService {
           data: { isActive: false },
         });
       } catch (error) {
-        console.error('Failed to soft delete comment_like notification:', error);
+        console.error(
+          'Failed to soft delete comment_like notification:',
+          error,
+        );
       }
-      
+
       return { liked: false };
     } else {
       try {
@@ -641,7 +770,7 @@ export class ReelsService {
       const comment = await this.prisma.comment.update({
         where: { id: commentId },
         data: { likesCount: { increment: 1 } },
-        include: { reel: { select: { thumbnailUrl: true } } }
+        include: { reel: { select: { thumbnailUrl: true } } },
       });
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
 
@@ -658,22 +787,29 @@ export class ReelsService {
               postId: comment.reelId,
               commentId: comment.id,
               isActive: true,
-              metaData: { targetType: 'REEL', reelThumbnail: comment.reel?.thumbnailUrl, commentText: comment.text }
+              metaData: {
+                targetType: 'REEL',
+                reelThumbnail: comment.reel?.thumbnailUrl,
+                commentText: comment.text,
+              },
             },
           });
-          this.notificationsGateway.sendNotificationToUser(comment.userId, notification);
+          this.notificationsGateway.sendNotificationToUser(
+            comment.userId,
+            notification,
+          );
         } catch (error) {
           console.error('Failed to create comment_like notification:', error);
           // If unique constraint fails, we can optionally restore the soft-deleted one
           if (error.code === 'P2002') {
-             await this.prisma.notification.updateMany({
-               where: {
-                 type: NotificationType.COMMENT_LIKE,
-                 commentId: comment.id,
-                 senderId: userId,
-               },
-               data: { isActive: true, updatedAt: new Date() },
-             });
+            await this.prisma.notification.updateMany({
+              where: {
+                type: NotificationType.COMMENT_LIKE,
+                commentId: comment.id,
+                senderId: userId,
+              },
+              data: { isActive: true, updatedAt: new Date() },
+            });
           }
         }
       }
@@ -682,9 +818,15 @@ export class ReelsService {
   }
 
   async incrementView(
-    reelId: string, 
-    userId?: string, 
-    metrics?: { deviceId?: string; sessionId?: string; ipHash?: string; watchDuration?: number; completionPercent?: number }
+    reelId: string,
+    userId?: string,
+    metrics?: {
+      deviceId?: string;
+      sessionId?: string;
+      ipHash?: string;
+      watchDuration?: number;
+      completionPercent?: number;
+    },
   ) {
     const reel = await this.prisma.reel.findUnique({ where: { id: reelId } });
     if (!reel) throw new NotFoundException('Reel not found');
@@ -699,7 +841,7 @@ export class ReelsService {
         ipHash: metrics?.ipHash,
         watchDuration: metrics?.watchDuration || 0,
         completionPercent: metrics?.completionPercent || 0.0,
-      }
+      },
     });
 
     let isValidForEarning = false;
@@ -707,7 +849,7 @@ export class ReelsService {
     if (userId && reel.creatorId === userId) {
       return { success: true, ignored: true, reason: 'creator' };
     }
-    
+
     // In production, we check if watchDuration >= 10000ms
     const isValidDuration = (metrics?.watchDuration ?? 10000) >= 10000;
 
@@ -725,7 +867,7 @@ export class ReelsService {
             reelId,
             userId,
             deviceId: metrics?.deviceId,
-          }
+          },
         });
 
         // Award 1 Coin to Viewer for watching
@@ -744,14 +886,14 @@ export class ReelsService {
             currency: 'COINS',
             status: 'SUCCESS',
             referenceId: `view_${reelId}_${Date.now()}`,
-          }
+          },
         });
 
         // Also record WatchHistory
         await this.prisma.watchHistory.upsert({
           where: { userId_reelId: { userId, reelId } },
           create: { userId, reelId },
-          update: { watchedAt: new Date() }
+          update: { watchedAt: new Date() },
         });
       } else {
         // Just update WatchHistory time
@@ -772,10 +914,17 @@ export class ReelsService {
 
     // 4. Update Challenge Leaderboard if applicable
     if (reel.challengeId && isValidForEarning && userId) {
-      await this.prisma.challengeParticipant.update({
-        where: { challengeId_userId: { challengeId: reel.challengeId, userId: reel.creatorId } },
-        data: { score: { increment: 1 } }
-      }).catch(() => null);
+      await this.prisma.challengeParticipant
+        .update({
+          where: {
+            challengeId_userId: {
+              challengeId: reel.challengeId,
+              userId: reel.creatorId,
+            },
+          },
+          data: { score: { increment: 1 } },
+        })
+        .catch(() => null);
       this.challengesGateway.broadcastLeaderboardUpdate(reel.challengeId);
     }
 
@@ -798,6 +947,7 @@ export class ReelsService {
                 isVerified: true,
               },
             },
+            location: true,
           },
         },
       },
@@ -821,11 +971,82 @@ export class ReelsService {
                 isVerified: true,
               },
             },
+            location: true,
           },
         },
       },
     });
     return history.map((h) => h.reel);
+  }
+
+  async updateReel(reelId: string, userId: string, dto: any) {
+    const reel = await this.prisma.reel.findUnique({ where: { id: reelId } });
+    if (!reel) throw new NotFoundException('Reel not found');
+    if (reel.creatorId !== userId)
+      throw new UnauthorizedException('You can only edit your own reels');
+
+    const { location, taggedUserIds, ...rest } = dto;
+
+    let validTaggedUserIds: string[] | undefined;
+    if (taggedUserIds !== undefined) {
+      if (taggedUserIds === null || taggedUserIds.length === 0) {
+        validTaggedUserIds = [];
+      } else {
+        const uniqueTags = [...new Set(taggedUserIds as string[])].slice(0, 10);
+        const blocks = await this.prisma.block.findMany({
+          where: {
+            OR: [
+              { blockerId: userId, blockedId: { in: uniqueTags } },
+              { blockerId: { in: uniqueTags }, blockedId: userId },
+            ],
+          },
+        });
+        const blockedIds = new Set(
+          blocks.map((b) =>
+            b.blockerId === userId ? b.blockedId : b.blockerId,
+          ),
+        );
+        validTaggedUserIds = uniqueTags.filter((id) => !blockedIds.has(id));
+      }
+    }
+
+    return this.prisma.reel.update({
+      where: { id: reelId },
+      data: {
+        ...rest,
+        ...(validTaggedUserIds !== undefined && {
+          taggedUsers: {
+            set: validTaggedUserIds.map((id) => ({ id })),
+          },
+        }),
+        ...(location !== undefined && {
+          location:
+            location === null
+              ? { delete: true }
+              : {
+                  upsert: {
+                    create: {
+                      name: location.locationName,
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                      placeId: location.placeId,
+                    },
+                    update: {
+                      name: location.locationName,
+                      latitude: location.latitude,
+                      longitude: location.longitude,
+                      placeId: location.placeId,
+                    },
+                  },
+                },
+        }),
+      },
+      include: {
+        creator: { select: { id: true, username: true, avatar: true } },
+        taggedUsers: { select: { id: true, username: true, avatar: true } },
+        location: true,
+      },
+    });
   }
 
   async deleteReel(reelId: string, userId: string) {
@@ -836,7 +1057,7 @@ export class ReelsService {
     if (reel.creatorId !== userId) {
       throw new UnauthorizedException('You can only delete your own reels');
     }
-    
+
     // Remove hashtags and decrement counts
     await this.hashtagsService.removeHashtagsForReel(reelId);
 

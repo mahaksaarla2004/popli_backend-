@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Patch, Param, Query, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { NotificationsService } from './notifications.service';
@@ -18,7 +27,11 @@ export class NotificationsController {
     @Query('limit') limit?: string,
   ) {
     const take = limit ? parseInt(limit, 10) : 20;
-    return this.notificationsService.getNotifications(req.user.id, take, cursor);
+    return this.notificationsService.getNotifications(
+      req.user.id,
+      take,
+      cursor,
+    );
   }
 
   @Get('unread-count')

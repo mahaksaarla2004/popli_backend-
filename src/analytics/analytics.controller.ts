@@ -18,7 +18,11 @@ export class AnalyticsController {
 
   @Post('track')
   @ApiOperation({ summary: 'Track user event' })
-  trackEvent(@Req() req: any, @Body() body: { event: string, metadata?: any }) {
-    return this.analyticsService.trackEvent(req.user.id, body.event, body.metadata);
+  trackEvent(@Req() req: any, @Body() body: { event: string; metadata?: any }) {
+    return this.analyticsService.trackEvent(
+      req.user.id,
+      body.event,
+      body.metadata,
+    );
   }
 }

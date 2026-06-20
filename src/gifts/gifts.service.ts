@@ -1,4 +1,8 @@
-import { Injectable, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SendGiftDto } from './dto/gifts.dto';
 
@@ -15,21 +19,30 @@ export class GiftsService {
       const gift = await tx.gift.findUnique({ where: { id: dto.giftId } });
       if (!gift) throw new NotFoundException('Gift not found');
 
-      const senderWallet = await tx.wallet.findUnique({ where: { userId: senderId } });
+      const senderWallet = await tx.wallet.findUnique({
+        where: { userId: senderId },
+      });
       const receiverWallet = await tx.wallet.upsert({
         where: { userId: dto.receiverId },
         create: { userId: dto.receiverId },
-        update: {}
+        update: {},
       });
 
-      if (!senderWallet) throw new BadRequestException('Sender wallet not found');
+      if (!senderWallet)
+        throw new BadRequestException('Sender wallet not found');
 
       const costInCoins = gift.costInCoins > 0 ? gift.costInCoins : dto.cost;
-      
-      const feeConfig = await tx.systemConfig.findUnique({ where: { key: 'PLATFORM_FEE_PERCENTAGE' } });
-      const feePercent = feeConfig && typeof feeConfig.valueJson === 'number' ? feeConfig.valueJson : 2;
-      
-      const baseEarnings = gift.costInINR > 0 ? gift.costInINR : (costInCoins * 0.5);
+
+      const feeConfig = await tx.systemConfig.findUnique({
+        where: { key: 'PLATFORM_FEE_PERCENTAGE' },
+      });
+      const feePercent =
+        feeConfig && typeof feeConfig.valueJson === 'number'
+          ? feeConfig.valueJson
+          : 2;
+
+      const baseEarnings =
+        gift.costInINR > 0 ? gift.costInINR : costInCoins * 0.5;
       const platformFeeDeducted = (baseEarnings * feePercent) / 100;
       const earningsInINR = baseEarnings - platformFeeDeducted;
 
@@ -60,9 +73,9 @@ export class GiftsService {
       // 2. Credit receiver's Pending Balance
       const updatedReceiverWallet = await tx.wallet.update({
         where: { id: receiverWallet.id },
-        data: { 
+        data: {
           pendingBalance: { increment: earningsInINR },
-          totalEarnings: { increment: earningsInINR } 
+          totalEarnings: { increment: earningsInINR },
         },
       });
 
@@ -75,8 +88,8 @@ export class GiftsService {
           sourceId: gift.id, // Or a unique gift transaction ID
           credit: earningsInINR,
           balanceAfter: updatedReceiverWallet.pendingBalance,
-          description: `Received gift: ${gift.name} from user ${senderId}`
-        }
+          description: `Received gift: ${gift.name} from user ${senderId}`,
+        },
       });
 
       // 4. Send Notification
@@ -92,18 +105,26 @@ export class GiftsService {
             giftId: gift.id,
             giftType: gift.name,
             giftAmount: earningsInINR,
-            targetType: 'REEL'
-          }
-        }
+            targetType: 'REEL',
+          },
+        },
       });
 
       // Optionally update user stats if that column exists:
-      await tx.user.update({
-        where: { id: dto.receiverId },
-        data: { /* giftsReceivedCount: { increment: 1 } */ }
-      }).catch(() => null);
+      await tx.user
+        .update({
+          where: { id: dto.receiverId },
+          data: {
+            /* giftsReceivedCount: { increment: 1 } */
+          },
+        })
+        .catch(() => null);
 
-      return { message: 'Gift sent successfully', gift, earnings: earningsInINR };
+      return {
+        message: 'Gift sent successfully',
+        gift,
+        earnings: earningsInINR,
+      };
     });
   }
 }

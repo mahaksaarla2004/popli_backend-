@@ -15,19 +15,32 @@ export class WalletService {
 
     // Fetch dynamic rates from SystemConfig (or fallback to defaults)
     const [rateConfig, tdsConfig, platformFeeConfig] = await Promise.all([
-      this.prisma.systemConfig.findUnique({ where: { key: 'VIEW_RATE_PER_1000' } }),
+      this.prisma.systemConfig.findUnique({
+        where: { key: 'VIEW_RATE_PER_1000' },
+      }),
       this.prisma.systemConfig.findUnique({ where: { key: 'TDS_PERCENT' } }),
-      this.prisma.systemConfig.findUnique({ where: { key: 'PLATFORM_FEE_PERCENT' } })
+      this.prisma.systemConfig.findUnique({
+        where: { key: 'PLATFORM_FEE_PERCENT' },
+      }),
     ]);
 
-    const ratePer1000 = rateConfig && typeof rateConfig.valueJson === 'number' ? rateConfig.valueJson : 5.0;
-    const tdsPercent = tdsConfig && typeof tdsConfig.valueJson === 'number' ? tdsConfig.valueJson : 10.0;
-    const platformFeePercent = platformFeeConfig && typeof platformFeeConfig.valueJson === 'number' ? platformFeeConfig.valueJson : 2.0;
+    const ratePer1000 =
+      rateConfig && typeof rateConfig.valueJson === 'number'
+        ? rateConfig.valueJson
+        : 5.0;
+    const tdsPercent =
+      tdsConfig && typeof tdsConfig.valueJson === 'number'
+        ? tdsConfig.valueJson
+        : 10.0;
+    const platformFeePercent =
+      platformFeeConfig && typeof platformFeeConfig.valueJson === 'number'
+        ? platformFeeConfig.valueJson
+        : 2.0;
 
     // 1. Find all unprocessed ValidViews
     const unprocessedViews = await this.prisma.validView.findMany({
       where: { isProcessed: false },
-      include: { reel: { select: { creatorId: true, isMonetized: true } } }
+      include: { reel: { select: { creatorId: true, isMonetized: true } } },
     });
 
     if (unprocessedViews.length === 0) {
@@ -40,8 +53,8 @@ export class WalletService {
       data: {
         status: 'PROCESSING',
         totalViews: unprocessedViews.length,
-        totalEarnings: 0 // Will update later
-      }
+        totalEarnings: 0, // Will update later
+      },
     });
 
     // 3. Group views by Creator
@@ -49,7 +62,10 @@ export class WalletService {
     for (const view of unprocessedViews) {
       if (view.reel.isMonetized) {
         const creatorId = view.reel.creatorId;
-        creatorViewsMap.set(creatorId, (creatorViewsMap.get(creatorId) || 0) + 1);
+        creatorViewsMap.set(
+          creatorId,
+          (creatorViewsMap.get(creatorId) || 0) + 1,
+        );
       }
     }
 
@@ -70,8 +86,15 @@ export class WalletService {
             // Upsert Wallet
             const wallet = await tx.wallet.upsert({
               where: { userId: creatorId },
-              create: { userId: creatorId, pendingBalance: netEarnings, totalEarnings: netEarnings },
-              update: { pendingBalance: { increment: netEarnings }, totalEarnings: { increment: netEarnings } }
+              create: {
+                userId: creatorId,
+                pendingBalance: netEarnings,
+                totalEarnings: netEarnings,
+              },
+              update: {
+                pendingBalance: { increment: netEarnings },
+                totalEarnings: { increment: netEarnings },
+              },
             });
 
             // Create Ledger Entry
@@ -84,19 +107,19 @@ export class WalletService {
                 credit: netEarnings,
                 balanceAfter: wallet.pendingBalance + netEarnings, // Assuming balance is post-increment, Prisma upsert doesn't return the new value easily so we calculate. Wait, Prisma returns the UPDATED record.
                 // Correction: Prisma upsert returns the updated record.
-                description: `Batch Earnings for ${viewCount} views. Gross: ₹${grossEarnings.toFixed(2)}, TDS: ₹${tds.toFixed(2)}, Fee: ₹${platformFee.toFixed(2)}`
-              }
+                description: `Batch Earnings for ${viewCount} views. Gross: ₹${grossEarnings.toFixed(2)}, TDS: ₹${tds.toFixed(2)}, Fee: ₹${platformFee.toFixed(2)}`,
+              },
             });
 
             // Mark these views as processed
             await tx.validView.updateMany({
               where: {
                 isProcessed: false,
-                reel: { creatorId: creatorId }
+                reel: { creatorId: creatorId },
               },
-              data: { isProcessed: true, batchId: batch.id }
+              data: { isProcessed: true, batchId: batch.id },
             });
-            
+
             // Notify User
             await tx.notification.create({
               data: {
@@ -104,22 +127,31 @@ export class WalletService {
                 type: 'LIKE', // Fallback type for now, consider adding EARNING type
                 title: 'Earnings Updated!',
                 body: `You just earned ₹${netEarnings.toFixed(2)} from ${viewCount} valid views!`,
-              }
+              },
             });
           }
         });
       } catch (error) {
-        this.logger.error(`Failed to process earnings for creator ${creatorId}:`, error);
+        this.logger.error(
+          `Failed to process earnings for creator ${creatorId}:`,
+          error,
+        );
       }
     }
 
     // 5. Complete Batch
     await this.prisma.earningBatch.update({
       where: { id: batch.id },
-      data: { status: 'COMPLETED', totalEarnings: totalBatchEarnings, processedAt: new Date() }
+      data: {
+        status: 'COMPLETED',
+        totalEarnings: totalBatchEarnings,
+        processedAt: new Date(),
+      },
     });
 
-    this.logger.log(`Hourly earnings calculation completed. Batch ID: ${batch.id}. Total Creators: ${creatorViewsMap.size}. Total Net Payout: ₹${totalBatchEarnings}`);
+    this.logger.log(
+      `Hourly earnings calculation completed. Batch ID: ${batch.id}. Total Creators: ${creatorViewsMap.size}. Total Net Payout: ₹${totalBatchEarnings}`,
+    );
   }
 
   async getBalance(userId: string) {
@@ -129,18 +161,45 @@ export class WalletService {
       include: {
         ledgers: { orderBy: { createdAt: 'desc' }, take: 50 },
         withdrawalRequests: { orderBy: { createdAt: 'desc' }, take: 10 },
-        transactions: { orderBy: { createdAt: 'desc' }, take: 20 }
+        transactions: { orderBy: { createdAt: 'desc' }, take: 20 },
       },
     });
-    
+
+    let targetWallet = wallet;
+
     if (!wallet) {
-      return this.prisma.wallet.create({
+      targetWallet = await this.prisma.wallet.create({
         data: { userId },
-        include: { ledgers: true, withdrawalRequests: true, transactions: true }
+        include: {
+          ledgers: true,
+          withdrawalRequests: true,
+          transactions: true,
+        },
       });
     }
-    
-    return wallet;
+
+    const ledgerAggregations = await this.prisma.walletLedger.groupBy({
+      by: ['source'],
+      where: { userId },
+      _sum: { credit: true },
+    });
+
+    let viewEarnings = 0;
+    let giftEarnings = 0;
+    let referralEarnings = 0;
+
+    for (const agg of ledgerAggregations) {
+      if (agg.source === 'VIEW_EARNING') viewEarnings = agg._sum.credit || 0;
+      if (agg.source === 'GIFT_RECEIVED') giftEarnings = agg._sum.credit || 0;
+      if (agg.source === 'REFERRAL_BONUS') referralEarnings = agg._sum.credit || 0;
+    }
+
+    return {
+      ...targetWallet,
+      viewEarnings,
+      giftEarnings,
+      referralEarnings,
+    };
   }
 
   async withdraw(userId: string, dto: WithdrawDto) {
@@ -148,15 +207,22 @@ export class WalletService {
       const wallet = await tx.wallet.findUnique({ where: { userId } });
       if (!wallet) throw new BadRequestException('Wallet not found');
 
-      const kyc = await tx.kYCRecord.findFirst({ where: { userId, status: 'APPROVED' } });
-      if (!kyc) throw new BadRequestException('KYC must be completed and approved before withdrawal');
+      const kyc = await tx.kYCRecord.findFirst({
+        where: { userId, status: 'APPROVED' },
+      });
+      if (!kyc)
+        throw new BadRequestException(
+          'KYC must be completed and approved before withdrawal',
+        );
 
       // Check double submit
       const pendingRequest = await tx.withdrawalRequest.findFirst({
-        where: { walletId: wallet.id, status: 'PENDING' }
+        where: { walletId: wallet.id, status: 'PENDING' },
       });
       if (pendingRequest) {
-        throw new BadRequestException('You already have a pending withdrawal request.');
+        throw new BadRequestException(
+          'You already have a pending withdrawal request.',
+        );
       }
 
       // Check balance (withdrawal should be from withdrawableBalance)
@@ -164,19 +230,36 @@ export class WalletService {
         throw new BadRequestException('Insufficient withdrawable balance');
       }
 
-      const minWithdrawConfig = await tx.systemConfig.findUnique({ where: { key: 'MIN_WITHDRAWAL_INR' } });
-      const minWithdrawal = minWithdrawConfig && typeof minWithdrawConfig.valueJson === 'number' ? minWithdrawConfig.valueJson : 500;
+      const minWithdrawConfig = await tx.systemConfig.findUnique({
+        where: { key: 'MIN_WITHDRAWAL_INR' },
+      });
+      const minWithdrawal =
+        minWithdrawConfig && typeof minWithdrawConfig.valueJson === 'number'
+          ? minWithdrawConfig.valueJson
+          : 500;
 
       if (dto.amount < minWithdrawal) {
-        throw new BadRequestException(`Minimum withdrawal amount is ₹${minWithdrawal}`);
+        throw new BadRequestException(
+          `Minimum withdrawal amount is ₹${minWithdrawal}`,
+        );
       }
 
       // TDS and Platform Fee Calculations
-      const tdsConfig = await tx.systemConfig.findUnique({ where: { key: 'TDS_PERCENTAGE' } });
-      const feeConfig = await tx.systemConfig.findUnique({ where: { key: 'PLATFORM_FEE_PERCENTAGE' } });
-      
-      const tdsPercent = tdsConfig && typeof tdsConfig.valueJson === 'number' ? tdsConfig.valueJson : 10;
-      const feePercent = feeConfig && typeof feeConfig.valueJson === 'number' ? feeConfig.valueJson : 2;
+      const tdsConfig = await tx.systemConfig.findUnique({
+        where: { key: 'TDS_PERCENTAGE' },
+      });
+      const feeConfig = await tx.systemConfig.findUnique({
+        where: { key: 'PLATFORM_FEE_PERCENTAGE' },
+      });
+
+      const tdsPercent =
+        tdsConfig && typeof tdsConfig.valueJson === 'number'
+          ? tdsConfig.valueJson
+          : 10;
+      const feePercent =
+        feeConfig && typeof feeConfig.valueJson === 'number'
+          ? feeConfig.valueJson
+          : 2;
 
       const tdsDeducted = (dto.amount * tdsPercent) / 100;
       const platformFeeDeducted = (dto.amount * feePercent) / 100;
@@ -190,7 +273,7 @@ export class WalletService {
           netPayable: netPayable,
           status: 'PENDING',
           transactionId: dto.upiId, // Reusing field for UPI
-        }
+        },
       });
 
       // 2. Lock the funds safely preventing race conditions
@@ -198,10 +281,12 @@ export class WalletService {
       try {
         updatedWallet = await tx.wallet.update({
           where: { id: wallet.id, withdrawableBalance: { gte: dto.amount } },
-          data: { withdrawableBalance: { decrement: dto.amount } }
+          data: { withdrawableBalance: { decrement: dto.amount } },
         });
       } catch (e) {
-        throw new BadRequestException('Insufficient balance or concurrent transaction detected.');
+        throw new BadRequestException(
+          'Insufficient balance or concurrent transaction detected.',
+        );
       }
 
       // 3. Create Ledger Entry
@@ -213,10 +298,10 @@ export class WalletService {
           sourceId: withdrawal.id,
           debit: dto.amount,
           balanceAfter: updatedWallet.withdrawableBalance,
-          description: `Withdrawal Request to UPI: ${dto.upiId}`
-        }
+          description: `Withdrawal Request to UPI: ${dto.upiId}`,
+        },
       });
-      
+
       // 4. Audit Log
       await tx.auditLog.create({
         data: {
@@ -224,8 +309,8 @@ export class WalletService {
           action: 'WITHDRAWAL_REQUESTED',
           entityType: 'WithdrawalRequest',
           entityId: withdrawal.id,
-          newValue: { amount: dto.amount, upi: dto.upiId }
-        }
+          newValue: { amount: dto.amount, upi: dto.upiId },
+        },
       });
 
       return withdrawal;

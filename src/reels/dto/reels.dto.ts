@@ -6,7 +6,7 @@ import {
   IsNumber,
   IsBoolean,
 } from 'class-validator';
-import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 
 export enum MediaType {
   PHOTO = 'PHOTO',
@@ -95,6 +95,14 @@ export class CreateReelDto {
   @IsString()
   @IsOptional()
   challengeId?: string;
+  @ApiPropertyOptional()
+  @IsOptional()
+  location?: {
+    locationName: string;
+    latitude?: number;
+    longitude?: number;
+    placeId?: string;
+  };
 }
 
 export class AddCommentDto {
@@ -108,3 +116,5 @@ export class AddCommentDto {
   @IsOptional()
   parentId?: string;
 }
+
+export class UpdateReelDto extends PartialType(CreateReelDto) {}

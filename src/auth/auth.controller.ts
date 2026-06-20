@@ -5,7 +5,7 @@ import {
   Req,
   HttpCode,
   HttpStatus,
-  Res
+  Res,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -43,18 +43,26 @@ export class AuthController {
   @Post('verify-firebase-token')
   @ApiOperation({ summary: 'Verify Firebase ID Token and get JWT' })
   @HttpCode(HttpStatus.OK)
-  async verifyFirebaseToken(@Body() dto: VerifyFirebaseTokenDto, @Req() req: any, @Res() res: any) {
+  async verifyFirebaseToken(
+    @Body() dto: VerifyFirebaseTokenDto,
+    @Req() req: any,
+    @Res() res: any,
+  ) {
     try {
       const ip = req.ip || '';
       const userAgent = req.headers['user-agent'] || '';
-      const result = await this.authService.verifyFirebaseToken(dto, ip, userAgent);
+      const result = await this.authService.verifyFirebaseToken(
+        dto,
+        ip,
+        userAgent,
+      );
       return res.status(HttpStatus.OK).json(result);
     } catch (error: any) {
       console.error('VERIFY ERROR:', error);
-      return res.status(error.status || 500).json({ 
-        message: error.message, 
-        stack: error.stack, 
-        fullError: JSON.stringify(error) 
+      return res.status(error.status || 500).json({
+        message: error.message,
+        stack: error.stack,
+        fullError: JSON.stringify(error),
       });
     }
   }
@@ -62,9 +70,15 @@ export class AuthController {
   @Post('demo-login')
   @ApiOperation({ summary: 'Bypass Firebase for client demo' })
   @HttpCode(HttpStatus.OK)
-  async demoLogin(@Body() dto: { phone: string, otp: string }, @Req() req: any, @Res() res: any) {
+  async demoLogin(
+    @Body() dto: { phone: string; otp: string },
+    @Req() req: any,
+    @Res() res: any,
+  ) {
     if (dto.otp !== '1234') {
-      return res.status(HttpStatus.BAD_REQUEST).json({ message: 'Invalid OTP' });
+      return res
+        .status(HttpStatus.BAD_REQUEST)
+        .json({ message: 'Invalid OTP' });
     }
     const ip = req.ip || '';
     const userAgent = req.headers['user-agent'] || '';

@@ -13,19 +13,19 @@ export class HashtagsService {
     // 1. Remove existing ReelHashtag relations for this reel (useful for updates)
     const existingRelations = await this.prisma.reelHashtag.findMany({
       where: { reelId },
-      select: { hashtagId: true }
+      select: { hashtagId: true },
     });
 
     await this.prisma.reelHashtag.deleteMany({
-      where: { reelId }
+      where: { reelId },
     });
 
     // Decrement usage counts for removed hashtags
     if (existingRelations.length > 0) {
-      const hashtagIds = existingRelations.map(r => r.hashtagId);
+      const hashtagIds = existingRelations.map((r) => r.hashtagId);
       await this.prisma.hashtag.updateMany({
         where: { id: { in: hashtagIds } },
-        data: { usageCount: { decrement: 1 } }
+        data: { usageCount: { decrement: 1 } },
       });
     }
 
@@ -37,23 +37,23 @@ export class HashtagsService {
       // We increase recentScore slightly so new items bubble up
       const hashtag = await this.prisma.hashtag.upsert({
         where: { name: tag },
-        update: { 
+        update: {
           usageCount: { increment: 1 },
-          recentScore: { increment: 1.5 } 
+          recentScore: { increment: 1.5 },
         },
-        create: { 
-          name: tag, 
+        create: {
+          name: tag,
           usageCount: 1,
-          recentScore: 1.5
-        }
+          recentScore: 1.5,
+        },
       });
 
       // Link to reel
       await this.prisma.reelHashtag.create({
         data: {
           reelId,
-          hashtagId: hashtag.id
-        }
+          hashtagId: hashtag.id,
+        },
       });
     }
   }
@@ -61,18 +61,18 @@ export class HashtagsService {
   async removeHashtagsForReel(reelId: string) {
     const existingRelations = await this.prisma.reelHashtag.findMany({
       where: { reelId },
-      select: { hashtagId: true }
+      select: { hashtagId: true },
     });
 
     if (existingRelations.length > 0) {
-      const hashtagIds = existingRelations.map(r => r.hashtagId);
+      const hashtagIds = existingRelations.map((r) => r.hashtagId);
       await this.prisma.hashtag.updateMany({
         where: { id: { in: hashtagIds } },
-        data: { usageCount: { decrement: 1 } }
+        data: { usageCount: { decrement: 1 } },
       });
 
       await this.prisma.reelHashtag.deleteMany({
-        where: { reelId }
+        where: { reelId },
       });
     }
   }
@@ -80,10 +80,7 @@ export class HashtagsService {
   async getTrending(limit: number = 10) {
     return this.prisma.hashtag.findMany({
       take: limit,
-      orderBy: [
-        { recentScore: 'desc' },
-        { usageCount: 'desc' }
-      ]
+      orderBy: [{ recentScore: 'desc' }, { usageCount: 'desc' }],
     });
   }
 
@@ -93,20 +90,20 @@ export class HashtagsService {
       where: {
         name: {
           startsWith: sanitizedQuery,
-          mode: 'insensitive'
-        }
+          mode: 'insensitive',
+        },
       },
       take: limit,
-      orderBy: { usageCount: 'desc' }
+      orderBy: { usageCount: 'desc' },
     });
   }
 
   async getReelsByHashtag(name: string, limit: number = 20, cursor?: string) {
     const sanitizedName = name.replace('#', '').toLowerCase();
-    
+
     // Find hashtag to ensure it exists
     const hashtag = await this.prisma.hashtag.findUnique({
-      where: { name: sanitizedName }
+      where: { name: sanitizedName },
     });
 
     if (!hashtag) return { reels: [], nextCursor: null };
@@ -114,20 +111,33 @@ export class HashtagsService {
     const reelHashtags = await this.prisma.reelHashtag.findMany({
       where: { hashtagId: hashtag.id },
       take: limit + 1,
-      ...(cursor ? { skip: 1, cursor: { reelId_hashtagId: { reelId: cursor, hashtagId: hashtag.id } } } : {}),
+      ...(cursor
+        ? {
+            skip: 1,
+            cursor: {
+              reelId_hashtagId: { reelId: cursor, hashtagId: hashtag.id },
+            },
+          }
+        : {}),
       orderBy: { createdAt: 'desc' },
       include: {
         reel: {
           include: {
             creator: {
-              select: { id: true, name: true, username: true, avatar: true, isVerified: true },
+              select: {
+                id: true,
+                name: true,
+                username: true,
+                avatar: true,
+                isVerified: true,
+              },
             },
             taggedUsers: {
               select: { id: true, username: true, avatar: true },
             },
-          }
-        }
-      }
+          },
+        },
+      },
     });
 
     let nextCursor: string | null = null;
@@ -137,8 +147,8 @@ export class HashtagsService {
     }
 
     return {
-      reels: reelHashtags.map(rh => rh.reel),
-      nextCursor
+      reels: reelHashtags.map((rh) => rh.reel),
+      nextCursor,
     };
   }
 }

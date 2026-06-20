@@ -5,12 +5,12 @@ const prisma = new PrismaClient();
 
 async function main() {
   console.log('Starting hashtag extraction migration...');
-  
+
   const reels = await prisma.reel.findMany({
     where: {
-      description: { not: '' }
+      description: { not: '' },
     },
-    select: { id: true, description: true }
+    select: { id: true, description: true },
   });
 
   console.log(`Found ${reels.length} reels with descriptions.`);
@@ -25,28 +25,28 @@ async function main() {
 
     // Remove existing relations just in case this is re-run
     await prisma.reelHashtag.deleteMany({
-      where: { reelId: reel.id }
+      where: { reelId: reel.id },
     });
 
     for (const tag of hashtags) {
       const hashtag = await prisma.hashtag.upsert({
         where: { name: tag },
-        update: { 
+        update: {
           usageCount: { increment: 1 },
-          recentScore: { increment: 1.5 } 
+          recentScore: { increment: 1.5 },
         },
-        create: { 
-          name: tag, 
+        create: {
+          name: tag,
           usageCount: 1,
-          recentScore: 1.5
-        }
+          recentScore: 1.5,
+        },
       });
 
       await prisma.reelHashtag.create({
         data: {
           reelId: reel.id,
-          hashtagId: hashtag.id
-        }
+          hashtagId: hashtag.id,
+        },
       });
     }
 
@@ -56,7 +56,9 @@ async function main() {
     }
   }
 
-  console.log(`Migration complete! Processed ${processedCount} reels with hashtags.`);
+  console.log(
+    `Migration complete! Processed ${processedCount} reels with hashtags.`,
+  );
 }
 
 main()

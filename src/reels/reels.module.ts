@@ -8,7 +8,13 @@ import { HashtagsModule } from '../hashtags/hashtags.module';
 import { ChallengesModule } from '../challenges/challenges.module';
 
 @Module({
-  imports: [PrismaModule, ChatModule, NotificationsModule, HashtagsModule, ChallengesModule],
+  imports: [
+    PrismaModule,
+    ChatModule,
+    NotificationsModule,
+    HashtagsModule,
+    ChallengesModule,
+  ],
   controllers: [ReelsController],
   providers: [ReelsService],
   exports: [ReelsService],

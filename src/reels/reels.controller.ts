@@ -8,11 +8,12 @@ import {
   Req,
   Query,
   Delete,
+  Patch,
 } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { ReelsService } from './reels.service';
-import { CreateReelDto, AddCommentDto } from './dto/reels.dto';
+import { CreateReelDto, AddCommentDto, UpdateReelDto } from './dto/reels.dto';
 
 @ApiTags('reels')
 @Controller('reels')
@@ -27,6 +28,20 @@ export class ReelsController {
     return this.reelsService.createReel(req.user.id, dto);
   }
 
+  @Patch(':id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Update a reel (e.g. edit tags, location, caption)',
+  })
+  updateReel(
+    @Param('id') reelId: string,
+    @Req() req: any,
+    @Body() dto: UpdateReelDto,
+  ) {
+    return this.reelsService.updateReel(reelId, req.user.id, dto);
+  }
+
   @Get('feed')
   @ApiOperation({ summary: 'Get global feed (chronological, cursor-based)' })
   getFeed(
@@ -34,11 +49,7 @@ export class ReelsController {
     @Query('limit') limit: string,
     @Query('category') category: string,
   ) {
-    return this.reelsService.getFeed(
-      cursor,
-      Number(limit) || 10,
-      category
-    );
+    return this.reelsService.getFeed(cursor, Number(limit) || 10, category);
   }
 
   @Get('explore')
@@ -49,12 +60,14 @@ export class ReelsController {
     @Query('category') category: string,
     @Query('excludeIds') excludeIds: string,
   ) {
-    const excludeIdsArray = excludeIds ? excludeIds.split(',').filter(id => id.length > 0) : [];
+    const excludeIdsArray = excludeIds
+      ? excludeIds.split(',').filter((id) => id.length > 0)
+      : [];
     return this.reelsService.getExploreFeed(
       Number(page) || 1,
       Number(limit) || 10,
       category,
-      excludeIdsArray
+      excludeIdsArray,
     );
   }
 
@@ -145,12 +158,21 @@ export class ReelsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Register a view on a reel' })
   registerView(
-    @Param('id') reelId: string, 
+    @Param('id') reelId: string,
     @Req() req: any,
-    @Body() body: { deviceId?: string; sessionId?: string; watchDuration?: number; completionPercent?: number }
+    @Body()
+    body: {
+      deviceId?: string;
+      sessionId?: string;
+      watchDuration?: number;
+      completionPercent?: number;
+    },
   ) {
     const ipHash = req.ip || req.headers['x-forwarded-for'];
-    return this.reelsService.incrementView(reelId, req.user?.id, { ...body, ipHash });
+    return this.reelsService.incrementView(reelId, req.user?.id, {
+      ...body,
+      ipHash,
+    });
   }
 
   @Get(':id')
@@ -164,7 +186,9 @@ export class ReelsController {
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Delete a reel' })
   deleteReel(@Param('id') reelId: string, @Req() req: any) {
-    console.log(`[DELETE REEL] User ${req.user?.id} is trying to delete reel ID: ${reelId}`);
+    console.log(
+      `[DELETE REEL] User ${req.user?.id} is trying to delete reel ID: ${reelId}`,
+    );
     return this.reelsService.deleteReel(reelId, req.user.id);
   }
 }

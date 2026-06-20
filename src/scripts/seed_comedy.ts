@@ -7,10 +7,12 @@ async function updateReels() {
     const newDescription = (reel.description || '') + ' #comedy #viral';
     await prisma.reel.update({
       where: { id: reel.id },
-      data: { description: newDescription }
+      data: { description: newDescription },
     });
   }
   console.log('Updated 3 reels with #comedy');
 }
 
-updateReels().catch(console.error).finally(() => prisma.$disconnect());
+updateReels()
+  .catch(console.error)
+  .finally(() => prisma.$disconnect());

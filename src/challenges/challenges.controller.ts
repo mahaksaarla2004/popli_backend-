@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Put, Delete, Param, Body, Query, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Param,
+  Body,
+  Query,
+  UseGuards,
+  Req,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { ChallengesService } from './challenges.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -24,10 +35,10 @@ export class ChallengesController {
     @Query('status') status?: string,
   ) {
     return this.challengesService.getAdminChallenges(
-      page ? parseInt(page) : 1, 
+      page ? parseInt(page) : 1,
       limit ? parseInt(limit) : 10,
       search,
-      status
+      status,
     );
   }
 
@@ -68,20 +79,30 @@ export class ChallengesController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.challengesService.getChallengeParticipants(id, page ? parseInt(page) : 1, limit ? parseInt(limit) : 10);
+    return this.challengesService.getChallengeParticipants(
+      id,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 10,
+    );
   }
 
   @Get('admin/:id/reels')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get all challenge reels including pending (Admin)' })
+  @ApiOperation({
+    summary: 'Get all challenge reels including pending (Admin)',
+  })
   getAdminChallengeReels(
     @Param('id') id: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.challengesService.getAdminChallengeReels(id, page ? parseInt(page) : 1, limit ? parseInt(limit) : 10);
+    return this.challengesService.getAdminChallengeReels(
+      id,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 10,
+    );
   }
 
   @Put('admin/reels/:reelId/approval')
@@ -91,7 +112,7 @@ export class ChallengesController {
   @ApiOperation({ summary: 'Approve or Reject a reel' })
   approveReel(
     @Param('reelId') reelId: string,
-    @Body('status') status: 'APPROVED' | 'REJECTED'
+    @Body('status') status: 'APPROVED' | 'REJECTED',
   ) {
     return this.challengesService.approveReel(reelId, status);
   }
@@ -103,9 +124,12 @@ export class ChallengesController {
   @ApiOperation({ summary: 'Freeze leaderboard and select winners' })
   freezeLeaderboard(
     @Param('id') id: string,
-    @Body('winnerUserIds') winnerUserIds: string[]
+    @Body('winnerUserIds') winnerUserIds: string[],
   ) {
-    return this.challengesService.freezeLeaderboardAndSelectWinners(id, winnerUserIds);
+    return this.challengesService.freezeLeaderboardAndSelectWinners(
+      id,
+      winnerUserIds,
+    );
   }
 
   @Post('admin/rewards/:txId/process')
@@ -142,7 +166,10 @@ export class ChallengesController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.challengesService.getActiveChallenges(page ? parseInt(page) : 1, limit ? parseInt(limit) : 10);
+    return this.challengesService.getActiveChallenges(
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 10,
+    );
   }
 
   @Get(':id')
@@ -159,7 +186,12 @@ export class ChallengesController {
     @Query('limit') limit?: string,
     @Query('sort') sort?: string,
   ) {
-    return this.challengesService.getChallengeReels(challengeId, page ? parseInt(page) : 1, limit ? parseInt(limit) : 10, sort || 'latest');
+    return this.challengesService.getChallengeReels(
+      challengeId,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 10,
+      sort || 'latest',
+    );
   }
 
   @Get(':id/leaderboard')
@@ -169,7 +201,11 @@ export class ChallengesController {
     @Query('page') page?: string,
     @Query('limit') limit?: string,
   ) {
-    return this.challengesService.getLeaderboard(challengeId, page ? parseInt(page) : 1, limit ? parseInt(limit) : 10);
+    return this.challengesService.getLeaderboard(
+      challengeId,
+      page ? parseInt(page) : 1,
+      limit ? parseInt(limit) : 10,
+    );
   }
 
   @Post(':id/join')

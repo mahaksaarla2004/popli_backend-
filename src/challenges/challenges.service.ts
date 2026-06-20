@@ -1,4 +1,9 @@
-import { Injectable, BadRequestException, NotFoundException, Logger } from '@nestjs/common';
+import {
+  Injectable,
+  BadRequestException,
+  NotFoundException,
+  Logger,
+} from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { ChallengesGateway } from './challenges.gateway';
@@ -9,8 +14,8 @@ export class ChallengesService {
 
   constructor(
     private prisma: PrismaService,
-    private gateway: ChallengesGateway
-  ) { }
+    private gateway: ChallengesGateway,
+  ) {}
 
   @Cron(CronExpression.EVERY_5_MINUTES)
   async syncChallengeScores() {
@@ -18,36 +23,69 @@ export class ChallengesService {
     // Find all active challenges
     const activeChallenges = await this.prisma.challenge.findMany({
       where: { status: 'ACTIVE' },
-      select: { id: true }
+      select: { id: true },
     });
 
     for (const challenge of activeChallenges) {
       // Get all reels for this challenge
       const reels = await this.prisma.reel.findMany({
-        where: { challengeId: challenge.id, challengeApprovalStatus: 'APPROVED' },
-        select: { creatorId: true, viewsCount: true, likesCount: true, commentsCount: true, sharesCount: true }
+        where: {
+          challengeId: challenge.id,
+          challengeApprovalStatus: 'APPROVED',
+        },
+        select: {
+          creatorId: true,
+          viewsCount: true,
+          likesCount: true,
+          commentsCount: true,
+          sharesCount: true,
+        },
       });
 
       // Aggregate scores per creator
-      const creatorScores = new Map<string, { views: number, likes: number, comments: number, shares: number, total: number }>();
-      
+      const creatorScores = new Map<
+        string,
+        {
+          views: number;
+          likes: number;
+          comments: number;
+          shares: number;
+          total: number;
+        }
+      >();
+
       for (const reel of reels) {
-        const current = creatorScores.get(reel.creatorId) || { views: 0, likes: 0, comments: 0, shares: 0, total: 0 };
+        const current = creatorScores.get(reel.creatorId) || {
+          views: 0,
+          likes: 0,
+          comments: 0,
+          shares: 0,
+          total: 0,
+        };
         current.views += reel.viewsCount;
         current.likes += reel.likesCount;
         current.comments += reel.commentsCount;
         current.shares += reel.sharesCount;
-        
+
         // Define scoring algorithm (configurable in future)
-        current.total = current.views * 1 + current.likes * 5 + current.comments * 10 + current.shares * 15;
-        
+        current.total =
+          current.views * 1 +
+          current.likes * 5 +
+          current.comments * 10 +
+          current.shares * 15;
+
         creatorScores.set(reel.creatorId, current);
       }
 
       // Upsert into ChallengeScore
       for (const [participantId, score] of creatorScores.entries()) {
         await this.prisma.challengeScore.upsert({
-          where: { challengeId_participantId: { challengeId: challenge.id, participantId } },
+          where: {
+            challengeId_participantId: {
+              challengeId: challenge.id,
+              participantId,
+            },
+          },
           create: {
             challengeId: challenge.id,
             participantId,
@@ -55,24 +93,24 @@ export class ChallengesService {
             likes: score.likes,
             comments: score.comments,
             shares: score.shares,
-            totalScore: score.total
+            totalScore: score.total,
           },
           update: {
             views: score.views,
             likes: score.likes,
             comments: score.comments,
             shares: score.shares,
-            totalScore: score.total
-          }
+            totalScore: score.total,
+          },
         });
 
         // Also update the main participant table for backward compatibility in APIs
         await this.prisma.challengeParticipant.updateMany({
           where: { challengeId: challenge.id, userId: participantId },
-          data: { score: score.total }
+          data: { score: score.total },
         });
       }
-      
+
       this.gateway.broadcastLeaderboardUpdate(challenge.id);
     }
     this.logger.log('Challenge Score Sync Completed.');
@@ -100,7 +138,7 @@ export class ChallengesService {
     const skip = (page - 1) * limit;
     return this.prisma.challenge.findMany({
       where: {
-        status: { in: ['ACTIVE'] }
+        status: { in: ['ACTIVE'] },
       },
       skip,
       take: limit,
@@ -112,8 +150,8 @@ export class ChallengesService {
     const challenge = await this.prisma.challenge.findUnique({
       where: { id },
       include: {
-        _count: { select: { participants: true, reels: true } }
-      }
+        _count: { select: { participants: true, reels: true } },
+      },
     });
     if (!challenge) throw new NotFoundException('Challenge not found');
     return challenge;
@@ -124,7 +162,11 @@ export class ChallengesService {
       where: { id: challengeId },
     });
 
-    if (!challenge || challenge.status !== 'ACTIVE' || challenge.endDate < new Date()) {
+    if (
+      !challenge ||
+      challenge.status !== 'ACTIVE' ||
+      challenge.endDate < new Date()
+    ) {
       throw new BadRequestException('Challenge is not active or has expired');
     }
 
@@ -139,14 +181,17 @@ export class ChallengesService {
     // Update participant count
     const updated = await this.prisma.challenge.update({
       where: { id: challengeId },
-      data: { participantCount: { increment: 1 } }
+      data: { participantCount: { increment: 1 } },
     });
 
     const participant = await this.prisma.challengeParticipant.create({
       data: { challengeId, userId },
     });
 
-    this.gateway.broadcastParticipantJoined(challengeId, updated.participantCount);
+    this.gateway.broadcastParticipantJoined(
+      challengeId,
+      updated.participantCount,
+    );
 
     await this.prisma.notification.create({
       data: {
@@ -154,7 +199,7 @@ export class ChallengesService {
         type: 'CHALLENGE_JOINED',
         title: 'Joined Challenge!',
         body: `You successfully joined the ${challenge.title} challenge. Good luck!`,
-      }
+      },
     });
 
     return participant;
@@ -169,24 +214,31 @@ export class ChallengesService {
       skip,
       take: limit,
       include: {
-        user: { select: { id: true, name: true, username: true, avatar: true } }
-      }
+        user: {
+          select: { id: true, name: true, username: true, avatar: true },
+        },
+      },
     });
 
     return participants.map((p, index) => ({
       user: p.user,
       score: p.score,
       reelsCount: 0, // Optionally calculate this if still needed, or remove
-      rank: skip + index + 1
+      rank: skip + index + 1,
     }));
   }
 
-  async getChallengeReels(challengeId: string, page = 1, limit = 10, sort = 'latest') {
+  async getChallengeReels(
+    challengeId: string,
+    page = 1,
+    limit = 10,
+    sort = 'latest',
+  ) {
     const skip = (page - 1) * limit;
 
     const challenge = await this.prisma.challenge.findUnique({
       where: { id: challengeId },
-      select: { requiresApproval: true }
+      select: { requiresApproval: true },
     });
 
     const whereClause: any = { challengeId };
@@ -205,15 +257,22 @@ export class ChallengesService {
       take: limit,
       orderBy,
       include: {
-        creator: { select: { id: true, name: true, username: true, avatar: true } },
-        _count: { select: { likes: true, comments: true } }
-      }
+        creator: {
+          select: { id: true, name: true, username: true, avatar: true },
+        },
+        _count: { select: { likes: true, comments: true } },
+      },
     });
   }
 
   // --- ADMIN FUNCTIONS ---
 
-  async getAdminChallenges(page = 1, limit = 10, search?: string, status?: string) {
+  async getAdminChallenges(
+    page = 1,
+    limit = 10,
+    search?: string,
+    status?: string,
+  ) {
     const skip = (page - 1) * limit;
     const where: any = {};
     if (search) {
@@ -228,9 +287,9 @@ export class ChallengesService {
         where,
         skip,
         take: limit,
-        orderBy: { createdAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       }),
-      this.prisma.challenge.count({ where })
+      this.prisma.challenge.count({ where }),
     ]);
 
     return {
@@ -239,8 +298,8 @@ export class ChallengesService {
         total,
         page,
         limit,
-        totalPages: Math.ceil(total / limit)
-      }
+        totalPages: Math.ceil(total / limit),
+      },
     };
   }
 
@@ -253,10 +312,12 @@ export class ChallengesService {
         take: limit,
         orderBy: { score: 'desc' },
         include: {
-          user: { select: { id: true, name: true, username: true, avatar: true } }
-        }
+          user: {
+            select: { id: true, name: true, username: true, avatar: true },
+          },
+        },
       }),
-      this.prisma.challengeParticipant.count({ where: { challengeId } })
+      this.prisma.challengeParticipant.count({ where: { challengeId } }),
     ]);
 
     return { data, meta: { total, page, limit } };
@@ -271,10 +332,12 @@ export class ChallengesService {
         take: limit,
         orderBy: { createdAt: 'desc' },
         include: {
-          creator: { select: { id: true, name: true, username: true, avatar: true } }
-        }
+          creator: {
+            select: { id: true, name: true, username: true, avatar: true },
+          },
+        },
       }),
-      this.prisma.reel.count({ where: { challengeId } })
+      this.prisma.reel.count({ where: { challengeId } }),
     ]);
 
     return { data, meta: { total, page, limit } };
@@ -284,30 +347,34 @@ export class ChallengesService {
     const reel = await this.prisma.reel.update({
       where: { id: reelId },
       data: { challengeApprovalStatus: status },
-      include: { challenge: true }
+      include: { challenge: true },
     });
 
     if (reel.challenge) {
       await this.prisma.notification.create({
         data: {
           userId: reel.creatorId,
-          type: status === 'APPROVED' ? 'CHALLENGE_APPROVED' : 'CHALLENGE_REJECTED',
+          type:
+            status === 'APPROVED' ? 'CHALLENGE_APPROVED' : 'CHALLENGE_REJECTED',
           title: `Challenge Entry ${status === 'APPROVED' ? 'Approved' : 'Rejected'}`,
           body: `Your entry for the ${reel.challenge.title} challenge has been ${status.toLowerCase()}.`,
-        }
+        },
       });
     }
 
     return reel;
   }
 
-  async freezeLeaderboardAndSelectWinners(challengeId: string, winnerUserIds: string[]) {
+  async freezeLeaderboardAndSelectWinners(
+    challengeId: string,
+    winnerUserIds: string[],
+  ) {
     // Transactional process to freeze leaderboard and queue rewards
     return this.prisma.$transaction(async (tx) => {
       // 1. Mark challenge as COMPLETED
       const challenge = await tx.challenge.update({
         where: { id: challengeId },
-        data: { status: 'COMPLETED' }
+        data: { status: 'COMPLETED' },
       });
 
       // 2. Create pending reward transactions
@@ -317,7 +384,9 @@ export class ChallengesService {
       for (const winnerId of winnerUserIds) {
         // Prevent duplicates
         const existing = await tx.challengeRewardTransaction.findUnique({
-          where: { challengeId_winnerUserId: { challengeId, winnerUserId: winnerId } }
+          where: {
+            challengeId_winnerUserId: { challengeId, winnerUserId: winnerId },
+          },
         });
 
         if (!existing) {
@@ -327,8 +396,8 @@ export class ChallengesService {
               winnerUserId: winnerId,
               rewardAmount: rewardSplit,
               rewardType: 'INR',
-              status: 'PENDING'
-            }
+              status: 'PENDING',
+            },
           });
           transactions.push(trans);
         }
@@ -342,11 +411,13 @@ export class ChallengesService {
     // Process single reward transaction to Wallet
     const txData = await this.prisma.challengeRewardTransaction.findUnique({
       where: { id: txId },
-      include: { challenge: true }
+      include: { challenge: true },
     });
 
     if (!txData || txData.status === 'COMPLETED') {
-      throw new BadRequestException('Transaction not found or already completed');
+      throw new BadRequestException(
+        'Transaction not found or already completed',
+      );
     }
 
     try {
@@ -354,7 +425,7 @@ export class ChallengesService {
         // Update transaction to PROCESSING
         await tx.challengeRewardTransaction.update({
           where: { id: txId },
-          data: { status: 'PROCESSING' }
+          data: { status: 'PROCESSING' },
         });
 
         // Add to user wallet
@@ -363,16 +434,25 @@ export class ChallengesService {
           create: {
             userId: txData.winnerUserId,
             inrEarnings: txData.rewardType === 'INR' ? txData.rewardAmount : 0,
-            coinBalance: txData.rewardType === 'COINS' ? txData.rewardAmount : 0,
+            coinBalance:
+              txData.rewardType === 'COINS' ? txData.rewardAmount : 0,
           },
           update: {
-            inrEarnings: txData.rewardType === 'INR' ? { increment: txData.rewardAmount } : undefined,
-            coinBalance: txData.rewardType === 'COINS' ? { increment: txData.rewardAmount } : undefined,
-          }
+            inrEarnings:
+              txData.rewardType === 'INR'
+                ? { increment: txData.rewardAmount }
+                : undefined,
+            coinBalance:
+              txData.rewardType === 'COINS'
+                ? { increment: txData.rewardAmount }
+                : undefined,
+          },
         });
 
         // Log transaction
-        const wallet = await tx.wallet.findUnique({ where: { userId: txData.winnerUserId } });
+        const wallet = await tx.wallet.findUnique({
+          where: { userId: txData.winnerUserId },
+        });
         if (wallet) {
           await tx.transaction.create({
             data: {
@@ -381,15 +461,15 @@ export class ChallengesService {
               amount: txData.rewardAmount,
               currency: txData.rewardType,
               description: `Reward for winning challenge: ${txData.challenge.title}`,
-              status: 'SUCCESS'
-            }
+              status: 'SUCCESS',
+            },
           });
         }
 
         // Mark as completed
         await tx.challengeRewardTransaction.update({
           where: { id: txId },
-          data: { status: 'COMPLETED', processedAt: new Date() }
+          data: { status: 'COMPLETED', processedAt: new Date() },
         });
 
         // Send notification
@@ -399,7 +479,7 @@ export class ChallengesService {
             type: 'CHALLENGE_WIN',
             title: 'You Won a Challenge!',
             body: `Congratulations! You won ₹${txData.rewardAmount} in the ${txData.challenge.title} challenge.`,
-          }
+          },
         });
       });
 
@@ -408,9 +488,11 @@ export class ChallengesService {
       // Mark as failed if wallet update fails
       await this.prisma.challengeRewardTransaction.update({
         where: { id: txId },
-        data: { status: 'FAILED' }
+        data: { status: 'FAILED' },
       });
-      throw new BadRequestException('Failed to process reward. Transaction marked as FAILED.');
+      throw new BadRequestException(
+        'Failed to process reward. Transaction marked as FAILED.',
+      );
     }
   }
 
@@ -418,8 +500,10 @@ export class ChallengesService {
     return this.prisma.challengeRewardTransaction.findMany({
       where: { challengeId },
       include: {
-        winner: { select: { id: true, name: true, username: true, avatar: true } }
-      }
+        winner: {
+          select: { id: true, name: true, username: true, avatar: true },
+        },
+      },
     });
   }
 
@@ -431,11 +515,11 @@ export class ChallengesService {
         viewsCount: true,
         likesCount: true,
         sharesCount: true,
-      }
+      },
     });
-    
+
     if (!challenge) throw new NotFoundException('Challenge not found');
-    
+
     return {
       totalParticipants: challenge.participantCount,
       totalViews: challenge.viewsCount,

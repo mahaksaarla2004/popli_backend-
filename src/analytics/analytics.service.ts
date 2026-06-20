@@ -43,7 +43,10 @@ export class AnalyticsService {
   }
 
   async trackEvent(userId: string, eventName: string, metadata?: any) {
-    console.log(`[ANALYTICS] Event: ${eventName} | User: ${userId} | Metadata:`, metadata);
+    console.log(
+      `[ANALYTICS] Event: ${eventName} | User: ${userId} | Metadata:`,
+      metadata,
+    );
     return { success: true };
   }
 }

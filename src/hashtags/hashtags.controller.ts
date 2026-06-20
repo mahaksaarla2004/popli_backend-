@@ -22,6 +22,10 @@ export class HashtagsController {
     @Query('limit') limit: string,
     @Query('cursor') cursor?: string,
   ) {
-    return this.hashtagsService.getReelsByHashtag(name, limit ? parseInt(limit) : 20, cursor);
+    return this.hashtagsService.getReelsByHashtag(
+      name,
+      limit ? parseInt(limit) : 20,
+      cursor,
+    );
   }
 }
