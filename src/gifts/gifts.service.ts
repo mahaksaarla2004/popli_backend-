@@ -15,7 +15,7 @@ export class GiftsService {
   }
 
   async sendGift(senderId: string, dto: SendGiftDto) {
-    return this.prisma.$transaction(async (tx) => {
+    const result = await this.prisma.$transaction(async (tx) => {
       const gift = await tx.gift.findUnique({ where: { id: dto.giftId } });
       if (!gift) throw new NotFoundException('Gift not found');
 
@@ -93,8 +93,19 @@ export class GiftsService {
         },
       });
 
-      // 4. Send Notification
-      const existingNotif = await tx.notification.findFirst({
+      return {
+        message: 'Gift sent successfully',
+        gift,
+        earnings: earningsInINR,
+      };
+    }, {
+      maxWait: 15000,
+      timeout: 15000,
+    });
+
+    // 4. Send Notification OUTSIDE the transaction for speed
+    try {
+      const existingNotif = await this.prisma.notification.findFirst({
         where: {
           userId: dto.receiverId,
           senderId: senderId,
@@ -106,48 +117,36 @@ export class GiftsService {
       });
 
       if (existingNotif) {
-        await tx.notification.update({
+        await this.prisma.notification.update({
           where: { id: existingNotif.id },
           data: {
-            body: `sent you another ${gift.name}!`,
+            body: `sent you another ${result.gift.name}!`,
             isRead: false,
             updatedAt: new Date()
           }
         });
       } else {
-        await tx.notification.create({
+        await this.prisma.notification.create({
           data: {
             userId: dto.receiverId,
             senderId: senderId,
             type: 'GIFT' as any,
             title: 'You received a gift!',
-            body: `sent you a ${gift.name}`,
+            body: `sent you a ${result.gift.name}`,
             postId: dto.reelId,
             metaData: {
-              giftId: gift.id,
-              giftType: gift.name,
-              giftAmount: earningsInINR,
+              giftId: result.gift.id,
+              giftType: result.gift.name,
+              giftAmount: result.earnings,
               targetType: 'REEL',
             },
           },
         });
       }
+    } catch (err) {
+      console.error('Failed to send gift notification:', err);
+    }
 
-      // Optionally update user stats if that column exists:
-      await tx.user
-        .update({
-          where: { id: dto.receiverId },
-          data: {
-            /* giftsReceivedCount: { increment: 1 } */
-          },
-        })
-        .catch(() => null);
-
-      return {
-        message: 'Gift sent successfully',
-        gift,
-        earnings: earningsInINR,
-      };
-    });
+    return result;
   }
 }
