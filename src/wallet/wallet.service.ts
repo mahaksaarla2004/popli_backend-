@@ -110,8 +110,7 @@ export class WalletService {
                 source: 'VIEW_EARNING',
                 sourceId: batch.id,
                 credit: netEarnings,
-                balanceAfter: wallet.pendingBalance + netEarnings, // Assuming balance is post-increment, Prisma upsert doesn't return the new value easily so we calculate. Wait, Prisma returns the UPDATED record.
-                // Correction: Prisma upsert returns the updated record.
+                balanceAfter: wallet.pendingBalance, // Prisma upsert returns the updated record.
                 description: `Batch Earnings for ${viewCount} views. Gross: ₹${grossEarnings.toFixed(2)}, TDS: ₹${tds.toFixed(2)}, Fee: ₹${platformFee.toFixed(2)}`,
               },
             });
