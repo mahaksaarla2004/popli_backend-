@@ -380,7 +380,7 @@ export class ChallengesService {
       // 2. Create pending reward transactions
       const rewardSplit = challenge.rewardPool / winnerUserIds.length;
 
-      const transactions = [];
+      const transactions: any[] = [];
       for (const winnerId of winnerUserIds) {
         // Prevent duplicates
         const existing = await tx.challengeRewardTransaction.findUnique({

@@ -87,7 +87,7 @@ export class AuthService {
         Math.random().toString(36).substring(2, 8).toUpperCase() +
         Math.floor(Math.random() * 100);
 
-      let referredById = null;
+      let referredById: string | null = null;
 
       // Handle Referral Logic
       if (dto.referredByCode) {

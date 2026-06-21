@@ -788,6 +788,7 @@ enum NotificationType {
   CHALLENGE_REWARD_CREDITED @map("challenge_reward_credited")
   CHALLENGE_APPROVED        @map("challenge_approved")
   CHALLENGE_REJECTED        @map("challenge_rejected")
+  SYSTEM                    @map("system")
 }
 
 enum ChallengeRewardStatus {

@@ -7,7 +7,7 @@ async function main() {
   console.log('Seeding dummy challenge data...');
 
   // 1. Create 5 dummy users
-  const users = [];
+  const users: any[] = [];
   for (let i = 1; i <= 5; i++) {
     const user = await prisma.user.create({
       data: {

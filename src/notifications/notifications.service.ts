@@ -79,12 +79,12 @@ export class NotificationsService {
         : [],
     ]);
 
-    const senderMap = new Map(senders.map((s) => [s.id, s]));
+    const senderMap = new Map(senders.map((s) => [s.id, s] as [string, any]));
     const reelMap = new Map(
-      reels.map((r) => [r.id, r.thumbnailUrl || r.mediaUrl]),
+      reels.map((r) => [r.id, r.thumbnailUrl || r.mediaUrl] as [string, any]),
     );
-    const storyMap = new Map(stories.map((s) => [s.id, s.mediaUrl]));
-    const commentMap = new Map(comments.map((c) => [c.id, c.text]));
+    const storyMap = new Map(stories.map((s) => [s.id, s.mediaUrl] as [string, any]));
+    const commentMap = new Map(comments.map((c) => [c.id, c.text] as [string, any]));
 
     // First pass: map to the new payload structure
     const mappedNotifs = rawNotifications.map((n) => {
