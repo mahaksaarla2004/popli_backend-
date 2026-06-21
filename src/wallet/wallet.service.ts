@@ -93,11 +93,11 @@ export class WalletService {
               where: { userId: creatorId },
               create: {
                 userId: creatorId,
-                pendingBalance: netEarnings,
+                withdrawableBalance: netEarnings,
                 totalEarnings: netEarnings,
               },
               update: {
-                pendingBalance: { increment: netEarnings },
+                withdrawableBalance: { increment: netEarnings },
                 totalEarnings: { increment: netEarnings },
               },
             });
@@ -110,7 +110,7 @@ export class WalletService {
                 source: 'VIEW_EARNING',
                 sourceId: batch.id,
                 credit: netEarnings,
-                balanceAfter: wallet.pendingBalance, // Prisma upsert returns the updated record.
+                balanceAfter: wallet.withdrawableBalance, // Prisma upsert returns the updated record.
                 description: `Batch Earnings for ${viewCount} views. Gross: ₹${grossEarnings.toFixed(2)}, TDS: ₹${tds.toFixed(2)}, Fee: ₹${platformFee.toFixed(2)}`,
               },
             });

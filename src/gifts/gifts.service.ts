@@ -71,11 +71,11 @@ export class GiftsService {
         });
       }
 
-      // 2. Credit receiver's Pending Balance
+      // 2. Credit receiver's Withdrawable Balance
       const updatedReceiverWallet = await tx.wallet.update({
         where: { id: receiverWallet.id },
         data: {
-          pendingBalance: { increment: earningsInINR },
+          withdrawableBalance: { increment: earningsInINR },
           totalEarnings: { increment: earningsInINR },
         },
       });
@@ -88,7 +88,7 @@ export class GiftsService {
           source: 'GIFT_RECEIVED',
           sourceId: gift.id, // Or a unique gift transaction ID
           credit: earningsInINR,
-          balanceAfter: updatedReceiverWallet.pendingBalance,
+          balanceAfter: updatedReceiverWallet.withdrawableBalance,
           description: `Received gift: ${gift.name} from user ${senderId}`,
         },
       });
