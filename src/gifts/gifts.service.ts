@@ -33,22 +33,23 @@ export class GiftsService {
 
       const costInCoins = gift.costInCoins > 0 ? gift.costInCoins : dto.cost;
 
-      const feeConfig = await tx.systemConfig.findUnique({
-        where: { key: 'PLATFORM_FEE_PERCENTAGE' },
-      });
-      const feePercent =
-        feeConfig && typeof feeConfig.valueJson === 'number'
-          ? feeConfig.valueJson
-          : 2;
-
       const baseEarnings =
         gift.costInINR > 0 ? gift.costInINR : costInCoins * 0.5;
-      const platformFeeDeducted = (baseEarnings * feePercent) / 100;
-      const earningsInINR = baseEarnings - platformFeeDeducted;
+      
+      // According to business logic: 60% goes to the creator, 40% is company profit.
+      // 2% fee is strictly for withdrawal, not for gift revenue.
+      const companyProfit = (baseEarnings * 40) / 100;
+      const earningsInINR = baseEarnings - companyProfit;
 
       if (costInCoins > 0 && senderWallet.coinBalance < costInCoins) {
         throw new BadRequestException('Insufficient coins');
       }
+
+      const receiverUser = await tx.user.findUnique({
+        where: { id: dto.receiverId },
+        select: { name: true, username: true }
+      });
+      const receiverName = receiverUser?.name || receiverUser?.username || 'User';
 
       // 1. Deduct from sender
       if (costInCoins > 0) {
@@ -65,7 +66,7 @@ export class GiftsService {
             amount: costInCoins,
             currency: 'COINS',
             status: 'SUCCESS',
-            description: dto.message || `Sent gift: ${gift.name}`,
+            description: dto.message || `Sent gift: ${gift.name} to ${receiverName}`,
           },
         });
       }
@@ -93,22 +94,44 @@ export class GiftsService {
       });
 
       // 4. Send Notification
-      await tx.notification.create({
-        data: {
+      const existingNotif = await tx.notification.findFirst({
+        where: {
           userId: dto.receiverId,
           senderId: senderId,
           type: 'GIFT' as any,
-          title: 'You received a gift!',
-          body: `sent you a ${gift.name}`,
-          postId: dto.reelId,
-          metaData: {
-            giftId: gift.id,
-            giftType: gift.name,
-            giftAmount: earningsInINR,
-            targetType: 'REEL',
-          },
-        },
+          postId: dto.reelId || null,
+          commentId: null,
+          replyId: null,
+        }
       });
+
+      if (existingNotif) {
+        await tx.notification.update({
+          where: { id: existingNotif.id },
+          data: {
+            body: `sent you another ${gift.name}!`,
+            isRead: false,
+            updatedAt: new Date()
+          }
+        });
+      } else {
+        await tx.notification.create({
+          data: {
+            userId: dto.receiverId,
+            senderId: senderId,
+            type: 'GIFT' as any,
+            title: 'You received a gift!',
+            body: `sent you a ${gift.name}`,
+            postId: dto.reelId,
+            metaData: {
+              giftId: gift.id,
+              giftType: gift.name,
+              giftAmount: earningsInINR,
+              targetType: 'REEL',
+            },
+          },
+        });
+      }
 
       // Optionally update user stats if that column exists:
       await tx.user

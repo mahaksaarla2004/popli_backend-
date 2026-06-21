@@ -73,6 +73,11 @@ export class WalletService {
 
     // 4. Process payouts per creator inside transactions
     for (const [creatorId, viewCount] of creatorViewsMap.entries()) {
+      // Require at least 100 views before processing payout to avoid spamming transactions
+      if (viewCount < 100) {
+        continue;
+      }
+
       try {
         await this.prisma.$transaction(async (tx) => {
           const grossEarnings = (viewCount * ratePer1000) / 1000;

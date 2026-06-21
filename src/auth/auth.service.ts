@@ -336,7 +336,7 @@ export class AuthService {
       },
     });
 
-    let validSession = null;
+    let validSession: any = null;
     for (const session of sessions) {
       const isMatch = await bcrypt.compare(dto.refreshToken, session.tokenHash);
       if (isMatch) {
