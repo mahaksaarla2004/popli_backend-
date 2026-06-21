@@ -877,17 +877,32 @@ export class ReelsService {
           update: { coinBalance: { increment: 1 } },
         });
 
-        // Record Coin Earning Transaction
-        await this.prisma.transaction.create({
-          data: {
-            walletId: viewerWallet.id,
-            type: 'AD_REVENUE',
-            amount: 1,
-            currency: 'COINS',
-            status: 'SUCCESS',
-            referenceId: `view_${reelId}_${Date.now()}`,
-          },
+        // Record Coin Earning Transaction - Grouped Daily to prevent history spam
+        const todayStr = new Date().toISOString().split('T')[0];
+        const referenceId = `view_reward_${userId}_${todayStr}`;
+
+        const existingTx = await this.prisma.transaction.findFirst({
+          where: { referenceId, walletId: viewerWallet.id }
         });
+
+        if (existingTx) {
+          await this.prisma.transaction.update({
+            where: { id: existingTx.id },
+            data: { amount: { increment: 1 } }
+          });
+        } else {
+          await this.prisma.transaction.create({
+            data: {
+              walletId: viewerWallet.id,
+              type: 'AD_REVENUE',
+              amount: 1,
+              currency: 'COINS',
+              status: 'SUCCESS',
+              referenceId,
+              description: 'Daily Watch Rewards'
+            },
+          });
+        }
 
         // Also record WatchHistory
         await this.prisma.watchHistory.upsert({
