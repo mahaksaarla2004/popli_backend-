@@ -25,6 +25,15 @@ export class UsersService {
 
     if (!user) throw new NotFoundException('User not found');
 
+    if (!user.referralCode) {
+      const newCode = Math.random().toString(36).substring(2, 8).toUpperCase() + Math.floor(Math.random() * 100);
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { referralCode: newCode },
+      });
+      user.referralCode = newCode;
+    }
+
     // Auto-sync followers/following count to fix any drift
     const actualFollowers = await this.prisma.follows.count({
       where: { followingId: userId },

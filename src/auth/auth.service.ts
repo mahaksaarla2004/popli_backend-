@@ -122,15 +122,74 @@ export class AuthService {
       await this.prisma.wallet.create({ data: { userId: user.id } });
       await this.prisma.userPreference.create({ data: { userId: user.id } });
 
-      // Create Referral Tracker
+      // Create Referral Tracker and Instant Bonus
       if (referredById) {
-        await this.prisma.referralTracker.create({
+        const tracker = await this.prisma.referralTracker.create({
           data: {
             referrerId: referredById,
             referredId: user.id,
-            status: 'PENDING',
+            status: 'COMPLETED',
+            rewardInr: 100,
           },
         });
+
+        // 1. Credit Referrer ₹100
+        const refWallet = await this.prisma.wallet.findUnique({ where: { userId: referredById } });
+        if (refWallet) {
+          await this.prisma.wallet.update({
+            where: { id: refWallet.id },
+            data: { withdrawableBalance: { increment: 100 }, totalEarnings: { increment: 100 } }
+          });
+          await this.prisma.walletLedger.create({
+            data: {
+              userId: referredById,
+              walletId: refWallet.id,
+              source: 'REFERRAL_BONUS',
+              sourceId: tracker.id,
+              credit: 100,
+              balanceAfter: refWallet.withdrawableBalance + 100,
+              description: 'Referral Bonus for a successful signup'
+            }
+          });
+          // Notify Referrer
+          await this.prisma.notification.create({
+            data: {
+              userId: referredById,
+              type: 'SYSTEM',
+              title: 'Referral Bonus!',
+              body: 'You earned ₹100 because your friend successfully joined Popli!'
+            }
+          });
+        }
+
+        // 2. Credit Referred (New User) ₹25
+        const myWallet = await this.prisma.wallet.findUnique({ where: { userId: user.id } });
+        if (myWallet) {
+          await this.prisma.wallet.update({
+            where: { id: myWallet.id },
+            data: { withdrawableBalance: { increment: 25 }, totalEarnings: { increment: 25 } }
+          });
+          await this.prisma.walletLedger.create({
+            data: {
+              userId: user.id,
+              walletId: myWallet.id,
+              source: 'REFERRAL_BONUS',
+              sourceId: tracker.id,
+              credit: 25,
+              balanceAfter: 25,
+              description: 'Welcome Bonus for using a referral code'
+            }
+          });
+          // Notify Referred User
+          await this.prisma.notification.create({
+            data: {
+              userId: user.id,
+              type: 'SYSTEM',
+              title: 'Welcome Bonus!',
+              body: 'You earned ₹25 for signing up with a referral code!'
+            }
+          });
+        }
       }
     }
 
