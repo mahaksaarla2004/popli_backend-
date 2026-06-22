@@ -379,7 +379,7 @@ export class WalletService {
         data: {
           userId,
           walletId: wallet.id,
-          source: 'VIEW_EARNING',
+          source: 'WITHDRAWAL',
           sourceId: wallet.id,
           credit: 0,
           debit: 0,
