@@ -1,5 +1,6 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../prisma/prisma.service';
 import { RechargeDto, WithdrawDto } from './dto/wallet.dto';
 
@@ -73,8 +74,13 @@ export class WalletService {
 
     // 4. Process payouts per creator inside transactions
     for (const [creatorId, viewCount] of creatorViewsMap.entries()) {
+      // Require at least 100 views before processing payout to avoid spamming transactions
+      if (viewCount < 100) {
+        continue;
+      }
+
       try {
-        await this.prisma.$transaction(async (tx) => {
+        await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
           const grossEarnings = (viewCount * ratePer1000) / 1000;
           const tds = grossEarnings * (tdsPercent / 100);
           const platformFee = grossEarnings * (platformFeePercent / 100);
@@ -105,8 +111,7 @@ export class WalletService {
                 source: 'VIEW_EARNING',
                 sourceId: batch.id,
                 credit: netEarnings,
-                balanceAfter: wallet.pendingBalance + netEarnings, // Assuming balance is post-increment, Prisma upsert doesn't return the new value easily so we calculate. Wait, Prisma returns the UPDATED record.
-                // Correction: Prisma upsert returns the updated record.
+                balanceAfter: wallet.pendingBalance, // wallet is the post-increment upsert result
                 description: `Batch Earnings for ${viewCount} views. Gross: ₹${grossEarnings.toFixed(2)}, TDS: ₹${tds.toFixed(2)}, Fee: ₹${platformFee.toFixed(2)}`,
               },
             });
@@ -189,9 +194,15 @@ export class WalletService {
     let referralEarnings = 0;
 
     for (const agg of ledgerAggregations) {
-      if (agg.source === 'VIEW_EARNING') viewEarnings = agg._sum.credit || 0;
-      if (agg.source === 'GIFT_RECEIVED') giftEarnings = agg._sum.credit || 0;
-      if (agg.source === 'REFERRAL_BONUS') referralEarnings = agg._sum.credit || 0;
+      if (agg.source === 'VIEW_EARNING') {
+        viewEarnings = agg._sum.credit || 0;
+      }
+      if (agg.source === 'GIFT_RECEIVED') {
+        giftEarnings = agg._sum.credit || 0;
+      }
+      if (agg.source === 'REFERRAL_BONUS') {
+        referralEarnings = agg._sum.credit || 0;
+      }
     }
 
     return {
@@ -203,7 +214,7 @@ export class WalletService {
   }
 
   async withdraw(userId: string, dto: WithdrawDto) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const wallet = await tx.wallet.findUnique({ where: { userId } });
       if (!wallet) throw new BadRequestException('Wallet not found');
 
@@ -319,7 +330,7 @@ export class WalletService {
 
   async rechargeCoins(userId: string, dto: RechargeDto) {
     // Legacy support for coin recharge
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const wallet = await tx.wallet.findUnique({ where: { userId } });
       if (!wallet) throw new BadRequestException('Wallet not found');
 
@@ -338,6 +349,46 @@ export class WalletService {
         where: { id: wallet.id },
         data: { coinBalance: { increment: dto.amount } },
       });
+    });
+  }
+
+  // TEMP/DEMO: Promotes pendingBalance to withdrawableBalance.
+  // NOTE: this is a minimal implementation to unblock end-to-end testing of the
+  // withdrawal flow. The real business rule (auto after N days vs manual admin
+  // approval vs fraud-check window) needs to be confirmed with the team.
+  async promotePendingToWithdrawable(userId: string) {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const wallet = await tx.wallet.findUnique({ where: { userId } });
+      if (!wallet) throw new BadRequestException('Wallet not found');
+
+      if (wallet.pendingBalance <= 0) {
+        throw new BadRequestException('No pending balance to promote');
+      }
+
+      const amount = wallet.pendingBalance;
+
+      const updatedWallet = await tx.wallet.update({
+        where: { id: wallet.id },
+        data: {
+          pendingBalance: { decrement: amount },
+          withdrawableBalance: { increment: amount },
+        },
+      });
+
+      await tx.walletLedger.create({
+        data: {
+          userId,
+          walletId: wallet.id,
+          source: 'VIEW_EARNING',
+          sourceId: wallet.id,
+          credit: 0,
+          debit: 0,
+          balanceAfter: updatedWallet.withdrawableBalance,
+          description: `Promoted ₹${amount.toFixed(2)} from pending to withdrawable balance`,
+        },
+      });
+
+      return updatedWallet;
     });
   }
 }

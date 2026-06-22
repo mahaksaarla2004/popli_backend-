@@ -1,6 +1,8 @@
 node_modules/
 dist/
 .env
+.env.example
+.env*
 .DS_Store
 firebase-admin-key.json
 firebase-admin-key.json.json

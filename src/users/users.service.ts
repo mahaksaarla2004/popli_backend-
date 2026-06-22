@@ -125,14 +125,16 @@ export class UsersService {
 
     // Check completion criteria
     if (!updatedUser.isProfileComplete) {
-      // Must have name, username, and at least 1 interest
-      if (
+      const autoComplete =
         updatedUser.name &&
         updatedUser.name !== 'Popli User' &&
         updatedUser.username &&
         !updatedUser.username.startsWith('user_') &&
-        updatedUser.interests.length > 0
-      ) {
+        updatedUser.interests.length > 0;
+
+      const manualComplete = dto.isProfileComplete === true;
+
+      if (autoComplete || manualComplete) {
         return this.prisma.user.update({
           where: { id: userId },
           data: { isProfileComplete: true },

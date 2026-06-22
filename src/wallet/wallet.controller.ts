@@ -36,4 +36,13 @@ export class WalletController {
   triggerHourlyEarnings() {
     return this.walletService.processViewEarnings();
   }
+
+  @Post('test/promote-pending')
+  @ApiOperation({
+    summary:
+      'TEMP/DEMO ONLY: Promotes pendingBalance to withdrawableBalance for testing the withdrawal flow',
+  })
+  promotePending(@Req() req: any) {
+    return this.walletService.promotePendingToWithdrawable(req.user.id);
+  }
 }

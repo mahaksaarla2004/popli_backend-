@@ -53,6 +53,11 @@ export class UpdateProfileDto {
   dob?: string;
 
   @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  isProfileComplete?: boolean;
+
+  @ApiPropertyOptional()
   @IsArray()
   @IsOptional()
   interestIds?: string[];
