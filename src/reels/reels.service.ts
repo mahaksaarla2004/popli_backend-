@@ -457,6 +457,54 @@ export class ReelsService {
           this.challengesGateway.broadcastLeaderboardUpdate(reel.challengeId);
         }
 
+        // Liker Rewards (1 coin per 2 likes, max 50 coins/day)
+        const today = new Date();
+        const startOfDay = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+        const likesToday = await this.prisma.like.count({
+          where: { userId, createdAt: { gte: startOfDay } }
+        });
+
+        if (likesToday % 2 === 0) {
+          const todayStr = today.toISOString().split('T')[0];
+          const referenceId = `like_reward_${userId}_${todayStr}`;
+          
+          let likerWallet = await this.prisma.wallet.findUnique({ where: { userId } });
+          if (!likerWallet) likerWallet = await this.prisma.wallet.create({ data: { userId, coinBalance: 0 } });
+          
+          const existingLikeTx = await this.prisma.transaction.findFirst({
+            where: { referenceId, walletId: likerWallet.id }
+          });
+          
+          const maxLikeRewards = 50;
+          
+          if (!existingLikeTx) {
+            await this.prisma.transaction.create({
+              data: {
+                walletId: likerWallet.id,
+                type: 'CHALLENGE_REWARD',
+                amount: 1,
+                currency: 'COINS',
+                status: 'SUCCESS',
+                referenceId,
+                description: 'Daily Like Rewards'
+              }
+            });
+            await this.prisma.wallet.update({
+              where: { id: likerWallet.id },
+              data: { coinBalance: { increment: 1 } }
+            });
+          } else if (existingLikeTx.amount < maxLikeRewards) {
+            await this.prisma.transaction.update({
+              where: { id: existingLikeTx.id },
+              data: { amount: { increment: 1 } }
+            });
+            await this.prisma.wallet.update({
+              where: { id: likerWallet.id },
+              data: { coinBalance: { increment: 1 } }
+            });
+          }
+        }
+
         const user = await this.prisma.user.findUnique({
           where: { id: userId },
         });
@@ -870,12 +918,11 @@ export class ReelsService {
           },
         });
 
-        // Award 1 Coin to Viewer for watching
-        const viewerWallet = await this.prisma.wallet.upsert({
-          where: { userId },
-          create: { userId, coinBalance: 1 },
-          update: { coinBalance: { increment: 1 } },
-        });
+        // Award Coins to Viewer for watching (10 coins per view, capped at 200/day)
+        let viewerWallet = await this.prisma.wallet.findUnique({ where: { userId } });
+        if (!viewerWallet) {
+          viewerWallet = await this.prisma.wallet.create({ data: { userId, coinBalance: 0 } });
+        }
 
         // Record Coin Earning Transaction - Grouped Daily to prevent history spam
         const todayStr = new Date().toISOString().split('T')[0];
@@ -885,22 +932,33 @@ export class ReelsService {
           where: { referenceId, walletId: viewerWallet.id }
         });
 
-        if (existingTx) {
-          await this.prisma.transaction.update({
-            where: { id: existingTx.id },
-            data: { amount: { increment: 1 } }
-          });
-        } else {
+        const viewReward = 10;
+        const maxDailyViews = 200;
+
+        if (!existingTx) {
           await this.prisma.transaction.create({
             data: {
               walletId: viewerWallet.id,
               type: 'AD_REVENUE',
-              amount: 1,
+              amount: viewReward,
               currency: 'COINS',
               status: 'SUCCESS',
               referenceId,
               description: 'Daily Watch Rewards'
             },
+          });
+          await this.prisma.wallet.update({
+            where: { id: viewerWallet.id },
+            data: { coinBalance: { increment: viewReward } }
+          });
+        } else if (existingTx.amount < maxDailyViews) {
+          await this.prisma.transaction.update({
+            where: { id: existingTx.id },
+            data: { amount: { increment: viewReward } }
+          });
+          await this.prisma.wallet.update({
+            where: { id: viewerWallet.id },
+            data: { coinBalance: { increment: viewReward } }
           });
         }
 
