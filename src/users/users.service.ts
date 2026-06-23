@@ -168,6 +168,7 @@ export class UsersService {
     const creator = await this.prisma.user.findUnique({
       where: { username },
       include: {
+        wallet: { select: { totalEarnings: true } },
         reels: {
           take: 10,
           orderBy: { createdAt: 'desc' },
@@ -220,6 +221,9 @@ export class UsersService {
         category: true,
         followersCount: true,
         isVerified: true,
+        wallet: {
+          select: { totalEarnings: true }
+        }
       },
     });
   }
