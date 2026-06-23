@@ -56,6 +56,12 @@ export class GiftsService {
       });
       const receiverName = receiverUser?.name || receiverUser?.username || 'User';
 
+      const senderUser = await tx.user.findUnique({
+        where: { id: senderId },
+        select: { name: true, username: true }
+      });
+      const senderName = senderUser?.username || senderUser?.name || 'someone';
+
       // 1. Deduct from sender
       if (costInCoins > 0) {
         await tx.wallet.update({
@@ -94,7 +100,7 @@ export class GiftsService {
           sourceId: gift.id, // Or a unique gift transaction ID
           credit: earningsInINR,
           balanceAfter: updatedReceiverWallet.withdrawableBalance,
-          description: `Received gift: ${gift.name} from user ${senderId}`,
+          description: `Received gift: ${gift.name} from @${senderName}`,
         },
       });
 
