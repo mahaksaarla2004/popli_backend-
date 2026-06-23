@@ -38,6 +38,14 @@ export class StoriesController {
     return this.storiesService.getActiveStories(req.user.id);
   }
 
+  @Get('story/:id')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get a specific story by ID' })
+  getStoryById(@Param('id') storyId: string, @Req() req: any) {
+    return this.storiesService.getStoryById(storyId, req.user.id);
+  }
+
   @Post(':id/view')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth()

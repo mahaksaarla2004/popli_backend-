@@ -5,6 +5,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { SendGiftDto } from './dto/gifts.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class GiftsService {
@@ -15,7 +16,11 @@ export class GiftsService {
   }
 
   async sendGift(senderId: string, dto: SendGiftDto) {
-    const result = await this.prisma.$transaction(async (tx) => {
+    if (senderId === dto.receiverId) {
+      throw new BadRequestException('You cannot send a gift to yourself');
+    }
+
+    const result = await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const gift = await tx.gift.findUnique({ where: { id: dto.giftId } });
       if (!gift) throw new NotFoundException('Gift not found');
 

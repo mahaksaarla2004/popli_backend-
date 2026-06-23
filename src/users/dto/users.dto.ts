@@ -67,6 +67,11 @@ export class UpdateProfileDto {
   @IsArray()
   @IsOptional()
   socialLinks?: any[];
+
+  @ApiPropertyOptional()
+  @IsBoolean()
+  @IsOptional()
+  manualComplete?: boolean;
 }
 
 export class UpdatePreferencesDto {

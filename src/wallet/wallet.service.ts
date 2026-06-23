@@ -2,6 +2,7 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '../prisma/prisma.service';
 import { RechargeDto, WithdrawDto } from './dto/wallet.dto';
+import { Prisma } from '@prisma/client';
 
 @Injectable()
 export class WalletService {
@@ -79,7 +80,7 @@ export class WalletService {
       }
 
       try {
-        await this.prisma.$transaction(async (tx) => {
+        await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
           const grossEarnings = (viewCount * ratePer1000) / 1000;
           const tds = grossEarnings * (tdsPercent / 100);
           const platformFee = grossEarnings * (platformFeePercent / 100);
@@ -207,7 +208,7 @@ export class WalletService {
   }
 
   async withdraw(userId: string, dto: WithdrawDto) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const wallet = await tx.wallet.findUnique({ where: { userId } });
       if (!wallet) throw new BadRequestException('Wallet not found');
 
@@ -323,7 +324,7 @@ export class WalletService {
 
   async rechargeCoins(userId: string, dto: RechargeDto) {
     // Legacy support for coin recharge
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       const wallet = await tx.wallet.findUnique({ where: { userId } });
       if (!wallet) throw new BadRequestException('Wallet not found');
 
@@ -343,5 +344,44 @@ export class WalletService {
         data: { coinBalance: { increment: dto.amount } },
       });
     });
+  }
+
+  async promotePendingToWithdrawable() {
+    this.logger.log('Starting promotion of pending balances to withdrawable...');
+    
+    const wallets = await this.prisma.wallet.findMany({
+      where: { pendingBalance: { gt: 0 } },
+    });
+
+    let promotedCount = 0;
+    let totalPromoted = 0;
+
+    for (const wallet of wallets) {
+      const amount = wallet.pendingBalance;
+      const updatedWallet = await this.prisma.wallet.update({
+        where: { id: wallet.id },
+        data: {
+          pendingBalance: 0,
+          withdrawableBalance: { increment: amount },
+        },
+      });
+      promotedCount++;
+      totalPromoted += amount;
+
+      await this.prisma.walletLedger.create({
+        data: {
+          userId: wallet.userId,
+          walletId: wallet.id,
+          source: 'REFERRAL_BONUS', // Assuming we reuse a valid source enum to avoid schema issues, or 'VIEW_EARNING'
+          sourceId: 'PROMOTION_JOB',
+          credit: amount,
+          balanceAfter: updatedWallet.withdrawableBalance,
+          description: `Promoted ₹${amount.toFixed(2)} from pending to withdrawable balance.`,
+        },
+      });
+    }
+
+    this.logger.log(`Promotion complete. ${promotedCount} wallets updated. Total ₹${totalPromoted} promoted.`);
+    return { success: true, promotedCount, totalPromoted };
   }
 }

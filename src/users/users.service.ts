@@ -100,7 +100,7 @@ export class UsersService {
       if (existing) throw new BadRequestException('Username is already taken');
     }
 
-    const { interestIds, interestNames, dob, ...restDto } = dto;
+    const { interestIds, interestNames, dob, manualComplete, ...restDto } = dto;
 
     const data: any = { ...restDto };
 
@@ -125,6 +125,10 @@ export class UsersService {
       };
     }
 
+    if (manualComplete === true) {
+      data.isProfileComplete = true;
+    }
+
     // update the DB
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
@@ -133,7 +137,7 @@ export class UsersService {
     });
 
     // Check completion criteria
-    if (!updatedUser.isProfileComplete) {
+    if (!updatedUser.isProfileComplete && manualComplete !== false) {
       // Must have name, username, and at least 1 interest
       if (
         updatedUser.name &&

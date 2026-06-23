@@ -275,6 +275,22 @@ export class StoriesService {
     });
   }
 
+  async getStoryById(storyId: string, userId: string) {
+    const story = await this.prisma.story.findUnique({
+      where: { id: storyId },
+      include: {
+        creator: { select: { id: true, username: true, avatar: true } },
+        viewers: { where: { userId }, select: { id: true } },
+        _count: { select: { viewers: true } },
+      },
+    });
+
+    if (!story) throw new NotFoundException('Story not found');
+    if (story.expiresAt < new Date()) throw new NotFoundException('Story expired');
+
+    return story;
+  }
+
   async markViewed(storyId: string, userId: string) {
     const story = await this.prisma.story.findUnique({
       where: { id: storyId },
