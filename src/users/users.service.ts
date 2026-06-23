@@ -209,7 +209,9 @@ export class UsersService {
       where: {
         reels: { some: {} }, // Users who have at least one reel
       },
-      orderBy: { followersCount: 'desc' },
+      orderBy: {
+        wallet: { totalEarnings: 'desc' }
+      },
       take: 20,
       select: {
         id: true,
