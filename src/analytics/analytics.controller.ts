@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Body, UseGuards, Req, Param } from '@nestjs/common';
 import { ApiTags, ApiBearerAuth, ApiOperation } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { AnalyticsService } from './analytics.service';
@@ -24,5 +24,11 @@ export class AnalyticsController {
       body.event,
       body.metadata,
     );
+  }
+
+  @Get('reels/:id')
+  @ApiOperation({ summary: 'Get per-video deep analytics' })
+  getReelAnalytics(@Req() req: any, @Param('id') reelId: string) {
+    return this.analyticsService.getReelAnalytics(reelId, req.user.id);
   }
 }

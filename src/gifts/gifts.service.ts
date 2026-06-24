@@ -78,6 +78,7 @@ export class GiftsService {
             currency: 'COINS',
             status: 'SUCCESS',
             description: dto.message || `Sent gift: ${gift.name} to ${receiverName}`,
+            reelId: dto.reelId || null,
           },
         });
       }
@@ -101,6 +102,7 @@ export class GiftsService {
           credit: earningsInINR,
           balanceAfter: updatedReceiverWallet.withdrawableBalance,
           description: `Received gift: ${gift.name} from @${senderName}`,
+          reelId: dto.reelId || null,
         },
       });
 

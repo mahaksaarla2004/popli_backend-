@@ -872,6 +872,10 @@ export class ReelsService {
       deviceId?: string;
       sessionId?: string;
       ipHash?: string;
+      country?: string;
+      state?: string;
+      city?: string;
+      trafficSource?: string;
       watchDuration?: number;
       completionPercent?: number;
     },
@@ -887,6 +891,10 @@ export class ReelsService {
         deviceId: metrics?.deviceId,
         sessionId: metrics?.sessionId,
         ipHash: metrics?.ipHash,
+        country: metrics?.country,
+        state: metrics?.state,
+        city: metrics?.city,
+        trafficSource: metrics?.trafficSource,
         watchDuration: metrics?.watchDuration || 0,
         completionPercent: metrics?.completionPercent || 0.0,
       },

@@ -389,8 +389,11 @@ model Transaction {
   description String?
   status      TransactionStatus @default(PENDING)
   referenceId String?
+  reelId      String?
   createdAt   DateTime          @default(now())
   wallet      Wallet            @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([reelId])
 }
 
 model Gift {
@@ -568,6 +571,7 @@ model WalletLedger {
   walletId     String
   source       LedgerSource
   sourceId     String
+  reelId       String?
   credit       Float        @default(0.0)
   debit        Float        @default(0.0)
   balanceAfter Float
@@ -577,6 +581,7 @@ model WalletLedger {
 
   @@index([userId])
   @@index([walletId])
+  @@index([reelId])
 }
 
 model WithdrawalRequest {
@@ -601,6 +606,10 @@ model ViewEvent {
   deviceId          String?
   sessionId         String?
   ipHash            String?
+  country           String?
+  state             String?
+  city              String?
+  trafficSource     String?
   watchDuration     Int      @default(0)
   completionPercent Float    @default(0.0)
   createdAt         DateTime @default(now())
@@ -608,6 +617,9 @@ model ViewEvent {
   @@index([reelId])
   @@index([userId])
   @@index([deviceId])
+  @@index([reelId, country])
+  @@index([reelId, city])
+  @@index([reelId, createdAt])
 }
 
 model ValidView {
