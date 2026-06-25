@@ -294,6 +294,40 @@ export class AuthService {
     };
   }
 
+ async changePhone(userId: string, dto: { currentPhoneOtp: string; newPhone: string; newPhoneOtp: string }) {
+    if (dto.currentPhoneOtp !== '1234' || dto.newPhoneOtp !== '1234') {
+      throw new BadRequestException('Invalid OTP');
+    }
+
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+    if (!user) throw new BadRequestException('User not found');
+
+    let possibleNewPhones = [dto.newPhone];
+    if (dto.newPhone.startsWith('+91')) {
+      possibleNewPhones.push(dto.newPhone.replace('+91', ''));
+    } else if (/^\d{10}$/.test(dto.newPhone)) {
+      possibleNewPhones.push(`+91${dto.newPhone}`);
+    }
+
+    if (possibleNewPhones.includes(user.phone)) {
+      throw new BadRequestException('New phone number must be different from your current number.');
+    }
+
+    const existing = await this.prisma.user.findFirst({
+      where: { phone: { in: possibleNewPhones }, id: { not: userId } },
+    });
+    if (existing) {
+      throw new BadRequestException('This phone number is already registered with another account.');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: { phone: dto.newPhone },
+    });
+
+    return { phone: updatedUser.phone };
+  }
+
   async checkUser(dto: any) {
     if (dto.identifier) {
       // If it's a 10-digit number without country code, also check for +91

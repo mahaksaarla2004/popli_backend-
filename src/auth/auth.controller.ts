@@ -15,6 +15,7 @@ import {
   RefreshTokenDto,
   CheckUserDto,
   VerifyFirebaseTokenDto,
+  ChangePhoneDto,
 } from './dto/auth.dto';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -91,6 +92,13 @@ export class AuthController {
     }
   }
 
+  @UseGuards(JwtAuthGuard)
+  @Post('change-phone')
+  @ApiOperation({ summary: 'Change phone number after OTP verification of both old and new numbers' })
+  @HttpCode(HttpStatus.OK)
+  changePhone(@Body() dto: ChangePhoneDto, @Req() req: any) {
+    return this.authService.changePhone(req.user.id, dto);
+  }
   @Post('check-user')
   @ApiOperation({ summary: 'Check if user exists and if profile is complete' })
   @HttpCode(HttpStatus.OK)

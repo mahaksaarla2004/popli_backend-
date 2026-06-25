@@ -74,8 +74,7 @@ export class WalletService {
 
     // 4. Process payouts per creator inside transactions
     for (const [creatorId, viewCount] of creatorViewsMap.entries()) {
-      // Require at least 100 views before processing payout to avoid spamming transactions
-      if (viewCount < 100) {
+      if (viewCount < 1) {
         continue;
       }
 
@@ -196,7 +195,8 @@ export class WalletService {
     for (const agg of ledgerAggregations) {
       if (agg.source === 'VIEW_EARNING') viewEarnings = agg._sum.credit || 0;
       if (agg.source === 'GIFT_RECEIVED') giftEarnings = agg._sum.credit || 0;
-      if (agg.source === 'REFERRAL_BONUS') referralEarnings = agg._sum.credit || 0;
+      if (agg.source === 'REFERRAL_BONUS')
+        referralEarnings = agg._sum.credit || 0;
     }
 
     return {
@@ -347,8 +347,10 @@ export class WalletService {
   }
 
   async promotePendingToWithdrawable() {
-    this.logger.log('Starting promotion of pending balances to withdrawable...');
-    
+    this.logger.log(
+      'Starting promotion of pending balances to withdrawable...',
+    );
+
     const wallets = await this.prisma.wallet.findMany({
       where: { pendingBalance: { gt: 0 } },
     });
@@ -381,7 +383,9 @@ export class WalletService {
       });
     }
 
-    this.logger.log(`Promotion complete. ${promotedCount} wallets updated. Total ₹${totalPromoted} promoted.`);
+    this.logger.log(
+      `Promotion complete. ${promotedCount} wallets updated. Total ₹${totalPromoted} promoted.`,
+    );
     return { success: true, promotedCount, totalPromoted };
   }
 }
