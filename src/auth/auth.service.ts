@@ -43,8 +43,15 @@ export class AuthService {
       );
     }
 
+    let possiblePhones = [phone];
+    if (phone.startsWith('+91')) {
+      possiblePhones.push(phone.replace('+91', ''));
+    } else if (/^\d{10}$/.test(phone)) {
+      possiblePhones.push(`+91${phone}`);
+    }
+
     let user = await this.prisma.user.findFirst({
-      where: { phone },
+      where: { phone: { in: possiblePhones } },
     });
 
     if (user && user.isBlocked) {
@@ -232,7 +239,17 @@ export class AuthService {
 
   async demoLogin(phone: string, ip: string, userAgent: string) {
     if (!phone) throw new BadRequestException('Phone is required');
-    let user = await this.prisma.user.findFirst({ where: { phone } });
+
+    let possiblePhones = [phone];
+    if (phone.startsWith('+91')) {
+      possiblePhones.push(phone.replace('+91', ''));
+    } else if (/^\d{10}$/.test(phone)) {
+      possiblePhones.push(`+91${phone}`);
+    }
+
+    let user = await this.prisma.user.findFirst({
+      where: { phone: { in: possiblePhones } },
+    });
     if (!user) {
       const finalUsername =
         'user_' + Math.random().toString(36).substring(2, 10);
