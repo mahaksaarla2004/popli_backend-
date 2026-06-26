@@ -11,6 +11,7 @@ import {
   VerifyOtpDto,
   RefreshTokenDto,
   VerifyFirebaseTokenDto,
+  GoogleLoginDto,
 } from './dto/auth.dto';
 import { FirebaseAdminService } from './firebase-admin.service';
 
@@ -220,6 +221,90 @@ export class AuthService {
         ipAddress: ip,
         deviceInfo: dto.deviceId || userAgent,
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+      },
+    });
+
+    return {
+      accessToken,
+      refreshToken,
+      user: {
+        id: user.id,
+        name: user.name,
+        username: user.username,
+        avatar: user.avatar,
+        role: user.role,
+        isProfileComplete: user.isProfileComplete,
+      },
+    };
+  }
+
+async googleLogin(dto: GoogleLoginDto, ip: string, userAgent: string) {
+    const decodedToken = await this.firebaseAdmin.verifyIdToken(dto.idToken);
+
+    const email = decodedToken.email;
+    const name = decodedToken.name || 'Popli User';
+    const googleUid = decodedToken.uid;
+
+    if (!email) throw new BadRequestException('Google account has no email');
+
+    let user = await this.prisma.user.findFirst({
+      where: { email },
+    });
+
+    if (user && user.isBlocked) {
+      throw new BadRequestException('Your account has been restricted. Please contact support.');
+    }
+
+    if (!user) {
+      const deviceIdToCheck = dto.deviceId || userAgent;
+      if (deviceIdToCheck) {
+        const existingDeviceSessions = await this.prisma.session.groupBy({
+          by: ['userId'],
+          where: { deviceInfo: deviceIdToCheck },
+        });
+        if (existingDeviceSessions.length >= 5) {
+          throw new BadRequestException('Registration limit reached for this device.');
+        }
+      }
+
+      const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase() + Math.floor(Math.random() * 100);
+      let referredById: string | null = null;
+
+      if (dto.referredByCode) {
+        const referrer = await this.prisma.user.findUnique({ where: { referralCode: dto.referredByCode } });
+        if (referrer) referredById = referrer.id;
+      }
+
+      const finalUsername = `user_${googleUid.substring(0, 8)}`;
+
+      user = await this.prisma.user.create({
+        data: {
+          email,
+          username: finalUsername,
+          name,
+          isProfileComplete: false,
+          deviceId: dto.deviceId || userAgent,
+          referralCode,
+          referredById,
+        },
+      });
+
+      await this.prisma.wallet.create({ data: { userId: user.id } });
+      await this.prisma.userPreference.create({ data: { userId: user.id } });
+    }
+
+    const payload = { sub: user.id, role: user.role };
+    const accessToken = this.jwtService.sign(payload);
+    const refreshToken = this.jwtService.sign(payload, { expiresIn: '7d' });
+    const tokenHash = await bcrypt.hash(refreshToken, 10);
+
+    await this.prisma.session.create({
+      data: {
+        userId: user.id,
+        tokenHash,
+        ipAddress: ip,
+        deviceInfo: dto.deviceId || userAgent,
+        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
       },
     });
 

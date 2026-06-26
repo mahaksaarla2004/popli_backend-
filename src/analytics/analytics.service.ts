@@ -67,7 +67,11 @@ export class AnalyticsService {
       where: { reelId, userId, source: 'GIFT_RECEIVED' },
     });
     const giftEarnings = ledgers.reduce((sum, l) => sum + l.credit, 0);
-    const viewEarnings = 0; // Placeholder until ad view earnings are partitioned per reel
+
+    const viewLedgers = await this.prisma.walletLedger.findMany({
+      where: { reelId, userId, source: 'VIEW_EARNING' },
+    });
+    const viewEarnings = viewLedgers.reduce((sum, l) => sum + l.credit, 0);
     const totalEarnings = giftEarnings + viewEarnings;
 
     // Top Gifters (Using Notifications as proxy for sender details since Ledger lacks senderId)

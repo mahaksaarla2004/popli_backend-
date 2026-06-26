@@ -16,6 +16,7 @@ import {
   CheckUserDto,
   VerifyFirebaseTokenDto,
   ChangePhoneDto,
+  GoogleLoginDto,
 } from './dto/auth.dto';
 import { UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from './jwt-auth.guard';
@@ -65,6 +66,20 @@ export class AuthController {
         stack: error.stack,
         fullError: JSON.stringify(error),
       });
+    }
+  }
+
+ @Post('google-login')
+  @ApiOperation({ summary: 'Sign in with Google via Firebase ID Token' })
+  @HttpCode(HttpStatus.OK)
+  async googleLogin(@Body() dto: GoogleLoginDto, @Req() req: any, @Res() res: any) {
+    try {
+      const ip = req.ip || '';
+      const userAgent = req.headers['user-agent'] || '';
+      const result = await this.authService.googleLogin(dto, ip, userAgent);
+      return res.status(HttpStatus.OK).json(result);
+    } catch (error: any) {
+      return res.status(error.status || 500).json({ message: error.message });
     }
   }
 

@@ -58,25 +58,36 @@ export class WalletService {
       },
     });
 
-    // 3. Group views by Creator
-    const creatorViewsMap = new Map<string, number>();
+// 3. Group views by Creator AND Reel
+    const reelViewsMap = new Map<string, { creatorId: string; viewCount: number }>();
     for (const view of unprocessedViews) {
       if (view.reel.isMonetized) {
-        const creatorId = view.reel.creatorId;
-        creatorViewsMap.set(
-          creatorId,
-          (creatorViewsMap.get(creatorId) || 0) + 1,
-        );
+        const key = view.reelId;
+        const existing = reelViewsMap.get(key);
+        if (existing) {
+          existing.viewCount += 1;
+        } else {
+          reelViewsMap.set(key, { creatorId: view.reel.creatorId, viewCount: 1 });
+        }
+      }
+    }
+
+    // Group total views per creator for single wallet update + notification
+    const creatorTotals = new Map<string, { totalViews: number; totalNet: number }>();
+    for (const [, { creatorId, viewCount }] of reelViewsMap.entries()) {
+      const existing = creatorTotals.get(creatorId);
+      if (existing) {
+        existing.totalViews += viewCount;
+      } else {
+        creatorTotals.set(creatorId, { totalViews: viewCount, totalNet: 0 });
       }
     }
 
     let totalBatchEarnings = 0;
 
-    // 4. Process payouts per creator inside transactions
-    for (const [creatorId, viewCount] of creatorViewsMap.entries()) {
-      if (viewCount < 1) {
-        continue;
-      }
+    // 4. Process payouts per reel inside transactions
+    for (const [reelId, { creatorId, viewCount }] of reelViewsMap.entries()) {
+      if (viewCount < 1) continue;
 
       try {
         await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
@@ -87,6 +98,9 @@ export class WalletService {
 
           if (netEarnings > 0) {
             totalBatchEarnings += netEarnings;
+
+            const creatorTotal = creatorTotals.get(creatorId)!;
+            creatorTotal.totalNet += netEarnings;
 
             // Upsert Wallet
             const wallet = await tx.wallet.upsert({
@@ -102,44 +116,46 @@ export class WalletService {
               },
             });
 
-            // Create Ledger Entry
+            // Create Ledger Entry WITH reelId
             await tx.walletLedger.create({
               data: {
                 userId: creatorId,
                 walletId: wallet.id,
                 source: 'VIEW_EARNING',
                 sourceId: batch.id,
+                reelId: reelId,
                 credit: netEarnings,
-                balanceAfter: wallet.withdrawableBalance, // Prisma upsert returns the updated record.
-                description: `Batch Earnings for ${viewCount} views. Gross: ₹${grossEarnings.toFixed(2)}, TDS: ₹${tds.toFixed(2)}, Fee: ₹${platformFee.toFixed(2)}`,
+                balanceAfter: wallet.withdrawableBalance,
+                description: `Reel earnings for ${viewCount} views. Gross: ₹${grossEarnings.toFixed(2)}, TDS: ₹${tds.toFixed(2)}, Fee: ₹${platformFee.toFixed(2)}`,
               },
             });
 
-            // Mark these views as processed
+            // Mark views for this reel as processed
             await tx.validView.updateMany({
-              where: {
-                isProcessed: false,
-                reel: { creatorId: creatorId },
-              },
+              where: { isProcessed: false, reelId },
               data: { isProcessed: true, batchId: batch.id },
-            });
-
-            // Notify User
-            await tx.notification.create({
-              data: {
-                userId: creatorId,
-                type: 'LIKE', // Fallback type for now, consider adding EARNING type
-                title: 'Earnings Updated!',
-                body: `You just earned ₹${netEarnings.toFixed(2)} from ${viewCount} valid views!`,
-              },
             });
           }
         });
       } catch (error) {
         this.logger.error(
-          `Failed to process earnings for creator ${creatorId}:`,
+          `Failed to process earnings for reel ${reelId}:`,
           error,
         );
+      }
+    }
+
+    // 5. Send one notification per creator
+    for (const [creatorId, { totalViews, totalNet }] of creatorTotals.entries()) {
+      if (totalNet > 0) {
+        await this.prisma.notification.create({
+          data: {
+            userId: creatorId,
+            type: 'SYSTEM',
+            title: 'Earnings Updated!',
+            body: `You just earned ₹${totalNet.toFixed(2)} from ${totalViews} valid views!`,
+          },
+        }).catch(() => {}); // non-critical
       }
     }
 
@@ -154,7 +170,7 @@ export class WalletService {
     });
 
     this.logger.log(
-      `Hourly earnings calculation completed. Batch ID: ${batch.id}. Total Creators: ${creatorViewsMap.size}. Total Net Payout: ₹${totalBatchEarnings}`,
+      `Hourly earnings calculation completed. Batch ID: ${batch.id}. Total Creators: ${creatorTotals.size}. Total Net Payout: ₹${totalBatchEarnings}`,
     );
   }
 
