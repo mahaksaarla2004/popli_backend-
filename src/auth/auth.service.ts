@@ -83,9 +83,9 @@ export class AuthService {
           where: { deviceInfo: deviceIdToCheck },
         });
 
-        if (existingDeviceSessions.length >= 5) {
+        if (existingDeviceSessions.length >= 500) {
           throw new BadRequestException(
-            'Registration limit reached for this device. Maximum 5 accounts allowed per device.',
+            'Registration limit reached for this device. Maximum 500 accounts allowed per device.',
           );
         }
       }
@@ -262,7 +262,7 @@ async googleLogin(dto: GoogleLoginDto, ip: string, userAgent: string) {
           by: ['userId'],
           where: { deviceInfo: deviceIdToCheck },
         });
-        if (existingDeviceSessions.length >= 5) {
+        if (existingDeviceSessions.length >= 500) {
           throw new BadRequestException('Registration limit reached for this device.');
         }
       }
