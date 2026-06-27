@@ -286,6 +286,7 @@ async googleLogin(dto: GoogleLoginDto, ip: string, userAgent: string) {
           deviceId: dto.deviceId || userAgent,
           referralCode,
           referredById,
+          phone: `G-${googleUid}`,
         },
       });
 
