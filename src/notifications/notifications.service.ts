@@ -105,9 +105,11 @@ export class NotificationsService {
       return {
         id: n.id,
         type: n.type,
+        title: n.title,
+        body: n.body,
         actorId: n.senderId,
-        actorName,
-        actorAvatar,
+        actorName: n.type === 'SYSTEM' ? 'Popli System' : actorName,
+        actorAvatar: n.type === 'SYSTEM' ? 'https://ui-avatars.com/api/?name=Popli&background=1D1037&color=A855F7' : actorAvatar,
         targetType: meta.targetType || (n.postId ? 'REEL' : 'USER'),
         reelId: n.postId,
         reelThumbnail:
