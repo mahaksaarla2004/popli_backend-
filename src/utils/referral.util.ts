@@ -32,7 +32,7 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
         create: { userId: tracker.referrerId },
         update: {},
       });
-      await tx.wallet.update({
+      const updatedReferrerWallet = await tx.wallet.update({
         where: { id: referrerWallet.id },
         data: {
           withdrawableBalance: { increment: 100 },
@@ -46,7 +46,7 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
           source: 'REFERRAL_BONUS',
           sourceId: tracker.id,
           credit: 100,
-          balanceAfter: referrerWallet.withdrawableBalance + 100,
+          balanceAfter: updatedReferrerWallet.withdrawableBalance,
           description:
             'Referral Bonus for a verified signup (KYC + First Post completed)',
         },
@@ -58,7 +58,7 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
         create: { userId: userId },
         update: {},
       });
-      await tx.wallet.update({
+      const updatedReferredWallet = await tx.wallet.update({
         where: { id: referredWallet.id },
         data: {
           withdrawableBalance: { increment: 25 },
@@ -72,7 +72,7 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
           source: 'REFERRAL_BONUS',
           sourceId: tracker.id,
           credit: 25,
-          balanceAfter: referredWallet.withdrawableBalance + 25,
+          balanceAfter: updatedReferredWallet.withdrawableBalance,
           description: 'Signup Bonus for completing KYC and First Post',
         },
       });

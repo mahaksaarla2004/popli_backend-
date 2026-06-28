@@ -38,8 +38,9 @@ export class GiftsService {
 
       const costInCoins = gift.costInCoins > 0 ? gift.costInCoins : dto.cost;
 
+     // Fallback rate matches platform-wide recharge rate: ₹1 = 10 coins (1 coin = ₹0.10)
       const baseEarnings =
-        gift.costInINR > 0 ? gift.costInINR : costInCoins * 0.5;
+        gift.costInINR > 0 ? gift.costInINR : costInCoins * 0.1;
       
       // According to business logic: 60% goes to the creator, 40% is company profit.
       // 2% fee is strictly for withdrawal, not for gift revenue.

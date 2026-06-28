@@ -91,6 +91,8 @@ export class WalletService {
 
       try {
         await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+          // ⚠️ TODO: CONFIRM WITH CLIENT — TDS/Platform Fee deducted here AND again in withdraw().
+          // This causes double-deduction. Awaiting business confirmation on where deduction should apply.
           const grossEarnings = (viewCount * ratePer1000) / 1000;
           const tds = grossEarnings * (tdsPercent / 100);
           const platformFee = grossEarnings * (platformFeePercent / 100);
@@ -266,11 +268,11 @@ export class WalletService {
       }
 
       // TDS and Platform Fee Calculations
-      const tdsConfig = await tx.systemConfig.findUnique({
-        where: { key: 'TDS_PERCENTAGE' },
+    const tdsConfig = await tx.systemConfig.findUnique({
+        where: { key: 'TDS_PERCENT' },
       });
       const feeConfig = await tx.systemConfig.findUnique({
-        where: { key: 'PLATFORM_FEE_PERCENTAGE' },
+        where: { key: 'PLATFORM_FEE_PERCENT' },
       });
 
       const tdsPercent =
@@ -282,6 +284,8 @@ export class WalletService {
           ? feeConfig.valueJson
           : 2;
 
+      // ⚠️ TODO: CONFIRM WITH CLIENT — same deduction already applied in processViewEarnings() above.
+      // Double-deduction risk. Awaiting business confirmation.
       const tdsDeducted = (dto.amount * tdsPercent) / 100;
       const platformFeeDeducted = (dto.amount * feePercent) / 100;
       const netPayable = dto.amount - tdsDeducted - platformFeeDeducted;
