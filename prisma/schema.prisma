@@ -824,6 +824,8 @@ enum LedgerSource {
   CHALLENGE_REWARD
   WITHDRAWAL
   FRAUD_REVERSAL
+  BONUS
+  ADJUSTMENT
 }
 
 enum WithdrawalStatus {

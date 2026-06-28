@@ -207,12 +207,15 @@ export class WalletService {
     let viewEarnings = 0;
     let giftEarnings = 0;
     let referralEarnings = 0;
+    let bonusEarnings = 0;
 
     for (const agg of ledgerAggregations) {
       if (agg.source === 'VIEW_EARNING') viewEarnings = agg._sum.credit || 0;
       if (agg.source === 'GIFT_RECEIVED') giftEarnings = agg._sum.credit || 0;
       if (agg.source === 'REFERRAL_BONUS')
         referralEarnings = agg._sum.credit || 0;
+      if (agg.source === 'ADJUSTMENT' || agg.source === 'CHALLENGE_REWARD')
+        bonusEarnings += agg._sum.credit || 0;
     }
 
     return {
@@ -220,6 +223,7 @@ export class WalletService {
       viewEarnings,
       giftEarnings,
       referralEarnings,
+      bonusEarnings,
     };
   }
 
@@ -390,7 +394,7 @@ export class WalletService {
         data: {
           userId: wallet.userId,
           walletId: wallet.id,
-          source: 'REFERRAL_BONUS', // Assuming we reuse a valid source enum to avoid schema issues, or 'VIEW_EARNING'
+          source: 'ADJUSTMENT', // Fixed: Use ADJUSTMENT instead of REFERRAL_BONUS
           sourceId: 'PROMOTION_JOB',
           credit: amount,
           balanceAfter: updatedWallet.withdrawableBalance,
