@@ -38,8 +38,10 @@ export class NotificationsGateway
       const payload = {
         id: notification.id,
         type: notification.type,
+        title: notification.title,
+        body: notification.body,
         actorId: notification.senderId,
-        actorName: sender
+        actorName: notification.type === 'SYSTEM' ? 'Popli System' : sender
           ? sender.name
           : notification.senderAvatar
             ? 'User'
