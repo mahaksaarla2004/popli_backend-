@@ -14,29 +14,14 @@ export class WalletService {
   async processViewEarnings() {
     this.logger.log('Starting Hourly View Earnings Processing...');
 
-    // Fetch dynamic rates from SystemConfig (or fallback to defaults)
-    const [rateConfig, tdsConfig, platformFeeConfig] = await Promise.all([
-      this.prisma.systemConfig.findUnique({
-        where: { key: 'VIEW_RATE_PER_1000' },
-      }),
-      this.prisma.systemConfig.findUnique({ where: { key: 'TDS_PERCENT' } }),
-      this.prisma.systemConfig.findUnique({
-        where: { key: 'PLATFORM_FEE_PERCENT' },
-      }),
-    ]);
+    const rateConfig = await this.prisma.systemConfig.findUnique({
+      where: { key: 'VIEW_RATE_PER_1000' },
+    });
 
     const ratePer1000 =
       rateConfig && typeof rateConfig.valueJson === 'number'
         ? rateConfig.valueJson
         : 5.0;
-    const tdsPercent =
-      tdsConfig && typeof tdsConfig.valueJson === 'number'
-        ? tdsConfig.valueJson
-        : 10.0;
-    const platformFeePercent =
-      platformFeeConfig && typeof platformFeeConfig.valueJson === 'number'
-        ? platformFeeConfig.valueJson
-        : 2.0;
 
     // 1. Find all unprocessed ValidViews
     const unprocessedViews = await this.prisma.validView.findMany({
@@ -90,31 +75,28 @@ export class WalletService {
       if (viewCount < 1) continue;
 
       try {
-        await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-          // ⚠️ TODO: CONFIRM WITH CLIENT — TDS/Platform Fee deducted here AND again in withdraw().
-          // This causes double-deduction. Awaiting business confirmation on where deduction should apply.
+  await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+          // CONFIRMED WITH CLIENT (28-06-2026): TDS + Platform Fee deducted ONLY at
+          // withdrawal time (see withdraw() below). View earnings credit the FULL gross amount.
           const grossEarnings = (viewCount * ratePer1000) / 1000;
-          const tds = grossEarnings * (tdsPercent / 100);
-          const platformFee = grossEarnings * (platformFeePercent / 100);
-          const netEarnings = grossEarnings - tds - platformFee;
 
-          if (netEarnings > 0) {
-            totalBatchEarnings += netEarnings;
+          if (grossEarnings > 0) {
+            totalBatchEarnings += grossEarnings;
 
             const creatorTotal = creatorTotals.get(creatorId)!;
-            creatorTotal.totalNet += netEarnings;
+            creatorTotal.totalNet += grossEarnings;
 
             // Upsert Wallet
             const wallet = await tx.wallet.upsert({
               where: { userId: creatorId },
               create: {
                 userId: creatorId,
-                withdrawableBalance: netEarnings,
-                totalEarnings: netEarnings,
+                withdrawableBalance: grossEarnings,
+                totalEarnings: grossEarnings,
               },
               update: {
-                withdrawableBalance: { increment: netEarnings },
-                totalEarnings: { increment: netEarnings },
+                withdrawableBalance: { increment: grossEarnings },
+                totalEarnings: { increment: grossEarnings },
               },
             });
 
@@ -126,9 +108,9 @@ export class WalletService {
                 source: 'VIEW_EARNING',
                 sourceId: batch.id,
                 reelId: reelId,
-                credit: netEarnings,
+                credit: grossEarnings,
                 balanceAfter: wallet.withdrawableBalance,
-                description: `Reel earnings for ${viewCount} views. Gross: ₹${grossEarnings.toFixed(2)}, TDS: ₹${tds.toFixed(2)}, Fee: ₹${platformFee.toFixed(2)}`,
+                description: `Reel earnings for ${viewCount} views. Gross: ₹${grossEarnings.toFixed(2)} (TDS & Platform Fee applied at withdrawal)`,
               },
             });
 
