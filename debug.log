@@ -26,3 +26,12 @@
 {"timestamp":"2026-06-28T17:58:05.348Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
 {"timestamp":"2026-06-28T17:58:05.354Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
 {"timestamp":"2026-06-28T17:58:05.359Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-28T19:11:55.281Z","status":404,"res":{"message":"Cannot GET /api","error":"Not Found","statusCode":404}}
+{"timestamp":"2026-06-28T19:11:55.565Z","status":404,"res":{"message":"Cannot GET /favicon.ico","error":"Not Found","statusCode":404}}
+{"timestamp":"2026-06-28T19:14:04.549Z","status":400,"res":{"message":["cost must be a number conforming to the specified constraints"],"error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-28T19:14:07.855Z","status":400,"res":{"message":["cost must be a number conforming to the specified constraints"],"error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-28T19:16:41.654Z","status":400,"res":{"message":["cost must be a number conforming to the specified constraints"],"error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-28T19:16:44.762Z","status":400,"res":{"message":["cost must be a number conforming to the specified constraints"],"error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-28T19:17:20.014Z","status":400,"res":{"message":["cost must be a number conforming to the specified constraints"],"error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-28T19:18:44.289Z","status":400,"res":{"message":"Expected double-quoted property name in JSON at position 81 (line 5 column 1)","error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-28T19:18:47.609Z","status":400,"res":{"message":"Expected double-quoted property name in JSON at position 81 (line 5 column 1)","error":"Bad Request","statusCode":400}}

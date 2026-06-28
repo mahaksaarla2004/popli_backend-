@@ -12,9 +12,10 @@ export class SendGiftDto {
   @IsNotEmpty()
   giftId: string;
 
-  @ApiProperty()
+  @ApiPropertyOptional()
   @IsNumber()
-  cost: number;
+  @IsOptional()
+  cost?: number;
 
   @ApiPropertyOptional()
   @IsString()
