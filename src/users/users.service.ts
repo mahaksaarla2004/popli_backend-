@@ -130,11 +130,20 @@ export class UsersService {
     }
 
     // update the DB
-    const updatedUser = await this.prisma.user.update({
-      where: { id: userId },
-      data,
-      include: { interests: true },
-    });
+    let updatedUser;
+    try {
+      updatedUser = await this.prisma.user.update({
+        where: { id: userId },
+        data,
+        include: { interests: true },
+      });
+    } catch (error: any) {
+      console.error('Prisma Error in updateProfile:', error);
+      if (error.code === 'P2002') {
+        throw new BadRequestException('Email, phone or username is already in use by another account.');
+      }
+      throw new BadRequestException(error.message || 'Failed to update profile data');
+    }
 
     // Check completion criteria
     if (!updatedUser.isProfileComplete && manualComplete !== false) {
@@ -164,9 +173,19 @@ export class UsersService {
     });
   }
 
-  async getCreatorProfile(username: string) {
-    const creator = await this.prisma.user.findUnique({
-      where: { username },
+  async getCreatorProfile(usernameOrId: string) {
+    // Check if it's a UUID
+    const isId = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(usernameOrId);
+    
+    // Find by ID, exact username, or trimmed username (to handle bad data with trailing spaces)
+    const creator = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          ...(isId ? [{ id: usernameOrId }] : []),
+          { username: usernameOrId },
+          { username: usernameOrId + ' ' } // Workaround for bad data with trailing spaces
+        ]
+      },
       include: {
         wallet: { select: { totalEarnings: true } },
         reels: {
