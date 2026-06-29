@@ -141,7 +141,7 @@ export class ReelsService {
                 title: 'You were tagged!',
                 body: `${creator.name} tagged you in a new post/reel.`,
                 senderId: creatorId,
-                senderAvatar: creator.avatar || 'https://i.pravatar.cc/150',
+                senderAvatar: creator.avatar || null,
               },
             });
 
@@ -527,7 +527,7 @@ export class ReelsService {
                 title: 'New Like',
                 body: `liked your reel`,
                 senderId: userId,
-                senderAvatar: user.avatar || 'https://i.pravatar.cc/150',
+                senderAvatar: user.avatar || null,
                 postId: reelId,
                 metaData: {
                   targetType: 'REEL',
@@ -631,7 +631,7 @@ export class ReelsService {
             title: 'New Comment',
             body: `commented: "${dto.text}"`,
             senderId: userId,
-            senderAvatar: comment.user.avatar || 'https://i.pravatar.cc/150',
+            senderAvatar: comment.user.avatar || null,
             postId: reelId,
             commentId: comment.id,
             metaData: {
@@ -671,7 +671,7 @@ export class ReelsService {
               title: 'New Reply',
               body: `${comment.user.name} replied to your comment.`,
               senderId: userId,
-              senderAvatar: comment.user.avatar || 'https://i.pravatar.cc/150',
+              senderAvatar: comment.user.avatar || null,
               postId: reelId,
               commentId: parentComment.id,
               replyId: comment.id,
@@ -709,7 +709,7 @@ export class ReelsService {
                 body: `${comment.user.name} mentioned you in a comment.`,
                 senderId: userId,
                 senderAvatar:
-                  comment.user.avatar || 'https://i.pravatar.cc/150',
+                  comment.user.avatar || null,
                 postId: reelId,
                 commentId: dto.parentId ? dto.parentId : comment.id,
                 replyId: dto.parentId ? comment.id : undefined,
@@ -840,7 +840,7 @@ export class ReelsService {
               title: 'Comment Liked',
               body: `${user.name} liked your comment.`,
               senderId: userId,
-              senderAvatar: user.avatar || 'https://i.pravatar.cc/150',
+              senderAvatar: user.avatar || null,
               postId: comment.reelId,
               commentId: comment.id,
               isActive: true,

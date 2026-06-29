@@ -48,7 +48,7 @@ export class NotificationsGateway
             : 'User',
         actorAvatar: sender
           ? sender.avatar
-          : notification.senderAvatar || 'https://i.pravatar.cc/150',
+          : notification.senderAvatar || null,
         targetType: meta.targetType || (notification.postId ? 'REEL' : 'USER'),
         reelId: notification.postId,
         reelThumbnail: meta.reelThumbnail,

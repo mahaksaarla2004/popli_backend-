@@ -51,7 +51,7 @@ export class SocialService {
             title: 'New Follower',
             body: `started following you.`,
             senderId: followerId,
-            senderAvatar: follower.avatar || 'https://i.pravatar.cc/150',
+            senderAvatar: follower.avatar || null,
             metaData: { targetType: 'USER' },
           },
         });

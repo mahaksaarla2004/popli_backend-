@@ -95,7 +95,7 @@ export class NotificationsService {
       const actorName = sender ? sender.username || sender.name : fallbackName;
       const actorAvatar = sender
         ? sender.avatar
-        : n.senderAvatar || 'https://i.pravatar.cc/150';
+        : n.senderAvatar || null;
 
       let finalCommentText = meta.commentText;
       if (!finalCommentText && n.commentId) {
