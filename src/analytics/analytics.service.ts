@@ -5,13 +5,14 @@ import { PrismaService } from '../prisma/prisma.service';
 export class AnalyticsService {
   constructor(private prisma: PrismaService) {}
 
-  async getCreatorDashboard(userId: string) {
+ async getCreatorDashboard(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
       include: {
         wallet: true,
         reels: {
           select: {
+            id: true,
             viewsCount: true,
             likesCount: true,
             commentsCount: true,
@@ -33,12 +34,26 @@ export class AnalyticsService {
       0,
     );
 
+    // Fetch actual view earnings per reel from WalletLedger
+    const reelIds = user.reels.map((r) => r.id);
+    const viewLedgers = await this.prisma.walletLedger.findMany({
+      where: { userId, source: 'VIEW_EARNING', reelId: { in: reelIds } },
+      select: { reelId: true, credit: true },
+    });
+
+    const earningsByReel: Record<string, number> = {};
+    for (const ledger of viewLedgers) {
+      if (!ledger.reelId) continue;
+      earningsByReel[ledger.reelId] = (earningsByReel[ledger.reelId] || 0) + ledger.credit;
+    }
+
     return {
       totalViews,
       totalEngagement,
       totalEarnings: user.wallet?.inrEarnings || 0,
       coinBalance: user.wallet?.coinBalance || 0,
       followers: user.followersCount,
+      reelEarnings: earningsByReel,
     };
   }
 
