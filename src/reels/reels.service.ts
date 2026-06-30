@@ -139,7 +139,7 @@ export class ReelsService {
                 userId: taggedUserId,
                 type: NotificationType.TAG,
                 title: 'You were tagged!',
-                body: `${creator.name} tagged you in a new post/reel.`,
+                body: `${creator.name} tagged you in a new ${reel.mediaType === 'PHOTO' ? 'post' : 'reel'}.`,
                 senderId: creatorId,
                 senderAvatar: creator.avatar || null,
               },
@@ -152,7 +152,7 @@ export class ReelsService {
                 taggedUserId,
               );
               await this.chatService.sendMessage(chat.id, creatorId, {
-                text: `Hey! I tagged you in my new post/reel. /reels/${reel.id}`,
+                text: `Hey! I tagged you in my new ${reel.mediaType === 'PHOTO' ? 'post' : 'reel'}. /reels/${reel.id}`,
                 mediaUrl: reel.mediaUrl,
               });
             } catch (err) {
@@ -527,12 +527,12 @@ async getFeed(
                 userId: reelCheck.creatorId,
                 type: NotificationType.LIKE,
                 title: 'New Like',
-                body: `liked your reel`,
+                body: `liked your ${reelCheck.mediaType === 'PHOTO' ? 'post' : 'reel'}`,
                 senderId: userId,
                 senderAvatar: user.avatar || null,
                 postId: reelId,
                 metaData: {
-                  targetType: 'REEL',
+                  targetType: reelCheck.mediaType === 'PHOTO' ? 'POST' : 'REEL',
                   reelThumbnail: reelCheck.thumbnailUrl,
                 },
               },
