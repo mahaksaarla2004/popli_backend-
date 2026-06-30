@@ -1,30 +1,42 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
-const GIFT_CATALOG = [
-  { id: 'rocket', name: 'Rocket', costInCoins: 500, costInINR: 50, iconUrl: 'rocket.png' },
-  { id: 'rose', name: 'Rose', costInCoins: 10, costInINR: 1, iconUrl: 'rose.png' },
-  { id: 'heart', name: 'Heart', costInCoins: 50, costInINR: 5, iconUrl: 'heart.png' },
-  { id: 'crown', name: 'Crown', costInCoins: 2000, costInINR: 200, iconUrl: 'crown.png' },
-  { id: 'diamond', name: 'Diamond', costInCoins: 5000, costInINR: 500, iconUrl: 'diamond.png' },
-  { id: 'party', name: 'Party', costInCoins: 100, costInINR: 10, iconUrl: 'party.png' },
-  { id: 'sparkle', name: 'Sparkles', costInCoins: 20, costInINR: 2, iconUrl: 'sparkle.png' },
-  { id: 'star', name: 'Star', costInCoins: 200, costInINR: 20, iconUrl: 'star.png' }
+const gifts = [
+  { id: 'rocket', name: 'Rocket', costInCoins: 500, iconUrl: 'rocket', animationType: 'fly' },
+  { id: 'rose', name: 'Rose', costInCoins: 10, iconUrl: 'rose', animationType: 'burst' },
+  { id: 'heart', name: 'Heart', costInCoins: 50, iconUrl: 'heart', animationType: 'float' },
+  { id: 'crown', name: 'Crown', costInCoins: 2000, iconUrl: 'crown', animationType: 'spin' },
+  { id: 'diamond', name: 'Diamond', costInCoins: 5000, iconUrl: 'diamond', animationType: 'burst' },
+  { id: 'party', name: 'Party', costInCoins: 150, iconUrl: 'party', animationType: 'burst' },
+  { id: 'sparkle', name: 'Sparkle', costInCoins: 300, iconUrl: 'sparkle', animationType: 'float' },
+  { id: 'star', name: 'Star', costInCoins: 5, iconUrl: 'star', animationType: 'fly' }
 ];
 
-async function main() {
+async function seedGifts() {
   console.log('Seeding gifts...');
-  for (const gift of GIFT_CATALOG) {
+  for (const gift of gifts) {
     await prisma.gift.upsert({
       where: { id: gift.id },
-      update: gift,
-      create: gift,
+      update: {
+        name: gift.name,
+        costInCoins: gift.costInCoins,
+        iconUrl: gift.iconUrl,
+        animationType: gift.animationType
+      },
+      create: {
+        id: gift.id,
+        name: gift.name,
+        costInCoins: gift.costInCoins,
+        iconUrl: gift.iconUrl,
+        animationType: gift.animationType
+      }
     });
+    console.log(`Upserted gift: ${gift.name}`);
   }
-  console.log('Done!');
+  console.log('Done seeding gifts.');
 }
 
-main()
+seedGifts()
   .catch(e => {
     console.error(e);
     process.exit(1);
