@@ -214,7 +214,7 @@ export class WalletService {
       if (agg.source === 'GIFT_RECEIVED') giftEarnings = agg._sum.credit || 0;
       if (agg.source === 'REFERRAL_BONUS')
         referralEarnings = agg._sum.credit || 0;
-      if (agg.source === 'ADJUSTMENT' || agg.source === 'CHALLENGE_REWARD')
+      if (agg.source === 'BONUS' || agg.source === 'CHALLENGE_REWARD')
         bonusEarnings += agg._sum.credit || 0;
     }
 
