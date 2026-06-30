@@ -38,3 +38,43 @@
 {"timestamp":"2026-06-30T15:41:49.207Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
 {"timestamp":"2026-06-30T16:13:05.439Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
 {"timestamp":"2026-06-30T16:13:05.857Z","status":401,"res":{"message":"Invalid refresh token","error":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:15:54.125Z","status":400,"res":{"message":"KYC must be completed and approved before withdrawal","error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-30T18:16:43.595Z","status":400,"res":{"message":"KYC must be completed and approved before withdrawal","error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-30T18:19:20.735Z","status":400,"res":{"message":"KYC must be completed and approved before withdrawal","error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-30T18:20:04.064Z","status":400,"res":{"message":"KYC must be completed and approved before withdrawal","error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-30T18:23:24.714Z","status":400,"res":{"message":"Insufficient balance or concurrent transaction detected.","error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-30T18:40:58.364Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:40:58.438Z","status":401,"res":{"message":"Invalid refresh token","error":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:43:28.133Z","status":400,"res":{"message":"Insufficient coins","error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-30T18:47:20.122Z","status":400,"res":{"message":"You already have a pending withdrawal request.","error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-30T18:51:59.821Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:51:59.828Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:51:59.969Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:51:59.974Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:56:15.157Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:56:24.367Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:56:24.371Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:56:26.236Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:56:26.259Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:56:32.402Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:56:33.025Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:56:33.658Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:56:33.995Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:57:56.598Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:57:58.318Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:58:02.709Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:58:02.724Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:58:07.227Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:58:07.237Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:58:55.692Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T18:58:55.717Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T19:01:01.940Z","status":400,"res":{"message":"You already have a pending withdrawal request.","error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-30T19:04:53.092Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T19:04:53.107Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T19:04:58.854Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T19:04:58.871Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T19:06:11.506Z","status":400,"res":{"message":"Request not found or already processed","error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-30T19:11:17.094Z","status":400,"res":{"message":"Insufficient balance or concurrent transaction detected.","error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-30T19:11:44.147Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T19:11:45.675Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T19:23:41.899Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}

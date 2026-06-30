@@ -174,7 +174,81 @@ export class WalletService {
     );
   }
 
+private async checkReferralUnlockEligibility(
+    tx: Prisma.TransactionClient | PrismaService,
+    userId: string,
+  ): Promise<boolean> {
+    const referralAsReferrer = await tx.referralTracker.findFirst({
+      where: { referrerId: userId },
+    });
+    const referralAsReferred = await tx.referralTracker.findFirst({
+      where: { referredId: userId },
+    });
+
+    if (!referralAsReferrer && !referralAsReferred) return false;
+
+    const counterpartId = referralAsReferrer
+      ? referralAsReferrer.referredId
+      : referralAsReferred!.referrerId;
+
+    const myReelCount = await tx.reel.count({ where: { creatorId: userId } });
+    if (myReelCount < 1) return false;
+
+    const counterpartReelCount = await tx.reel.count({
+      where: { creatorId: counterpartId },
+    });
+    if (counterpartReelCount < 1) return false;
+
+    const myKyc = await tx.kYCRecord.findFirst({
+      where: { userId, status: 'APPROVED' },
+    });
+    if (!myKyc) return false;
+
+    const counterpartKyc = await tx.kYCRecord.findFirst({
+      where: { userId: counterpartId, status: 'APPROVED' },
+    });
+    if (!counterpartKyc) return false;
+
+    return true;
+  }
+
+  async unlockReferralBalanceIfEligible(userId: string) {
+    return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      const wallet = await tx.wallet.findUnique({ where: { userId } });
+      if (!wallet || wallet.referralLockedBalance <= 0) return wallet;
+
+      const eligible = await this.checkReferralUnlockEligibility(tx, userId);
+      if (!eligible) return wallet;
+
+      const amount = wallet.referralLockedBalance;
+      const updatedWallet = await tx.wallet.update({
+        where: { id: wallet.id },
+        data: {
+          referralLockedBalance: { decrement: amount },
+          withdrawableBalance: { increment: amount },
+        },
+      });
+
+      await tx.walletLedger.create({
+        data: {
+          userId,
+          walletId: wallet.id,
+          source: 'ADJUSTMENT',
+          sourceId: 'REFERRAL_UNLOCK',
+          credit: amount,
+          balanceAfter: updatedWallet.withdrawableBalance,
+          description: `Unlocked ₹${amount.toFixed(2)} referral bonus (1 reel + KYC completed by both parties)`,
+        },
+      });
+
+      return updatedWallet;
+    });
+  }
+
   async getBalance(userId: string) {
+    // Auto-unlock referral balance if conditions are now met
+    await this.unlockReferralBalanceIfEligible(userId).catch(() => {});
+
     // We return the wallet along with the immutable ledger history, not the old transactions
     const wallet = await this.prisma.wallet.findUnique({
       where: { userId },
@@ -232,13 +306,40 @@ export class WalletService {
       const wallet = await tx.wallet.findUnique({ where: { userId } });
       if (!wallet) throw new BadRequestException('Wallet not found');
 
-      const kyc = await tx.kYCRecord.findFirst({
+    const kyc = await tx.kYCRecord.findFirst({
         where: { userId, status: 'APPROVED' },
       });
       if (!kyc)
         throw new BadRequestException(
           'KYC must be completed and approved before withdrawal',
         );
+
+      // Auto-unlock referral balance into withdrawableBalance if eligible.
+      // This NEVER blocks withdrawal of view/gift earnings — only affects
+      // referral money, which moves itself into the free pool when ready.
+      const eligible = await this.checkReferralUnlockEligibility(tx, userId);
+      if (eligible && wallet.referralLockedBalance > 0) {
+        const lockedAmount = wallet.referralLockedBalance;
+        await tx.wallet.update({
+          where: { id: wallet.id },
+          data: {
+            referralLockedBalance: { decrement: lockedAmount },
+            withdrawableBalance: { increment: lockedAmount },
+          },
+        });
+        await tx.walletLedger.create({
+          data: {
+            userId,
+            walletId: wallet.id,
+            source: 'ADJUSTMENT',
+            sourceId: 'REFERRAL_UNLOCK',
+            credit: lockedAmount,
+            balanceAfter: wallet.withdrawableBalance + lockedAmount,
+            description: `Unlocked ₹${lockedAmount.toFixed(2)} referral bonus (1 reel + KYC completed by both parties)`,
+          },
+        });
+        wallet.withdrawableBalance += lockedAmount;
+      }
 
       // Check double submit
       const pendingRequest = await tx.withdrawalRequest.findFirst({

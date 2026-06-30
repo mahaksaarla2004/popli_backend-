@@ -26,7 +26,7 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
 
       if (updateResult.count === 0) return false;
 
-      // Referrer ₹100
+      // Referrer ₹100 (locked until both parties have reel + approved KYC)
       const referrerWallet = await tx.wallet.upsert({
         where: { userId: tracker.referrerId },
         create: { userId: tracker.referrerId },
@@ -35,7 +35,7 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
       await tx.wallet.update({
         where: { id: referrerWallet.id },
         data: {
-          withdrawableBalance: { increment: 100 },
+          referralLockedBalance: { increment: 100 },
           totalEarnings: { increment: 100 },
         },
       });
@@ -46,13 +46,13 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
           source: 'REFERRAL_BONUS',
           sourceId: tracker.id,
           credit: 100,
-          balanceAfter: referrerWallet.withdrawableBalance + 100,
+          balanceAfter: referrerWallet.withdrawableBalance,
           description:
-            'Referral Bonus for a verified signup (KYC + First Post completed)',
+            'Referral Bonus for a verified signup (locked until both parties complete reel + KYC)',
         },
       });
 
-      // Referred User ₹25
+      // Referred User ₹25 (locked until both parties have reel + approved KYC)
       const referredWallet = await tx.wallet.upsert({
         where: { userId: userId },
         create: { userId: userId },
@@ -61,7 +61,7 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
       await tx.wallet.update({
         where: { id: referredWallet.id },
         data: {
-          withdrawableBalance: { increment: 25 },
+          referralLockedBalance: { increment: 25 },
           totalEarnings: { increment: 25 },
         },
       });
@@ -72,8 +72,8 @@ export async function checkAndProcessReferral(prisma: any, userId: string) {
           source: 'REFERRAL_BONUS',
           sourceId: tracker.id,
           credit: 25,
-          balanceAfter: referredWallet.withdrawableBalance + 25,
-          description: 'Signup Bonus for completing KYC and First Post',
+          balanceAfter: referredWallet.withdrawableBalance,
+          description: 'Signup Bonus for completing KYC and First Post (locked until both parties complete reel + KYC)',
         },
       });
 

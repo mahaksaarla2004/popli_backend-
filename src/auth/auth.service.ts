@@ -144,9 +144,9 @@ export class AuthService {
         // 1. Credit Referrer ₹100
         const refWallet = await this.prisma.wallet.findUnique({ where: { userId: referredById } });
         if (refWallet) {
-          await this.prisma.wallet.update({
+        await this.prisma.wallet.update({
             where: { id: refWallet.id },
-            data: { withdrawableBalance: { increment: 100 }, totalEarnings: { increment: 100 } }
+            data: { referralLockedBalance: { increment: 100 }, totalEarnings: { increment: 100 } }
           });
           await this.prisma.walletLedger.create({
             data: {
@@ -155,8 +155,8 @@ export class AuthService {
               source: 'REFERRAL_BONUS',
               sourceId: tracker.id,
               credit: 100,
-              balanceAfter: refWallet.withdrawableBalance + 100,
-              description: 'Referral Bonus for a successful signup'
+              balanceAfter: refWallet.referralLockedBalance + 100,
+              description: 'Referral Bonus for a successful signup (locked)'
             }
           });
           // Notify Referrer
@@ -170,12 +170,12 @@ export class AuthService {
           });
         }
 
-        // 2. Credit Referred (New User) ₹25
+       // 2. Credit Referred (New User) ₹25
         const myWallet = await this.prisma.wallet.findUnique({ where: { userId: user.id } });
         if (myWallet) {
           await this.prisma.wallet.update({
             where: { id: myWallet.id },
-            data: { withdrawableBalance: { increment: 25 }, totalEarnings: { increment: 25 } }
+            data: { referralLockedBalance: { increment: 25 }, totalEarnings: { increment: 25 } }
           });
           await this.prisma.walletLedger.create({
             data: {
@@ -185,7 +185,7 @@ export class AuthService {
               sourceId: tracker.id,
               credit: 25,
               balanceAfter: 25,
-              description: 'Welcome Bonus for using a referral code'
+              description: 'Welcome Bonus for using a referral code (locked)'
             }
           });
           // Notify Referred User
@@ -375,11 +375,11 @@ async googleLogin(dto: GoogleLoginDto, ip: string, userAgent: string) {
           },
         });
 
-        const refWallet = await this.prisma.wallet.findUnique({ where: { userId: referredById } });
+     const refWallet = await this.prisma.wallet.findUnique({ where: { userId: referredById } });
         if (refWallet) {
           await this.prisma.wallet.update({
             where: { id: refWallet.id },
-            data: { withdrawableBalance: { increment: 100 }, totalEarnings: { increment: 100 } }
+            data: { referralLockedBalance: { increment: 100 }, totalEarnings: { increment: 100 } }
           });
           await this.prisma.walletLedger.create({
             data: {
@@ -388,8 +388,8 @@ async googleLogin(dto: GoogleLoginDto, ip: string, userAgent: string) {
               source: 'REFERRAL_BONUS',
               sourceId: tracker.id,
               credit: 100,
-              balanceAfter: refWallet.withdrawableBalance + 100,
-              description: 'Referral Bonus for a successful signup'
+              balanceAfter: refWallet.referralLockedBalance + 100,
+              description: 'Referral Bonus for a successful signup (locked)'
             }
           });
           await this.prisma.notification.create({
@@ -406,7 +406,7 @@ async googleLogin(dto: GoogleLoginDto, ip: string, userAgent: string) {
         if (myWallet) {
           await this.prisma.wallet.update({
             where: { id: myWallet.id },
-            data: { withdrawableBalance: { increment: 25 }, totalEarnings: { increment: 25 } }
+            data: { referralLockedBalance: { increment: 25 }, totalEarnings: { increment: 25 } }
           });
           await this.prisma.walletLedger.create({
             data: {
@@ -416,7 +416,7 @@ async googleLogin(dto: GoogleLoginDto, ip: string, userAgent: string) {
               sourceId: tracker.id,
               credit: 25,
               balanceAfter: 25,
-              description: 'Welcome Bonus for using a referral code'
+              description: 'Welcome Bonus for using a referral code (locked)'
             }
           });
           await this.prisma.notification.create({
