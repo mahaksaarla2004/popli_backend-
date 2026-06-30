@@ -1,7 +1,9 @@
 import {
   Controller,
+  Get,
   Post,
   Body,
+  Param,
   Req,
   HttpCode,
   HttpStatus,
@@ -86,8 +88,8 @@ export class AuthController {
   @Post('demo-login')
   @ApiOperation({ summary: 'Bypass Firebase for client demo' })
   @HttpCode(HttpStatus.OK)
-  async demoLogin(
-    @Body() dto: { phone: string; otp: string },
+ async demoLogin(
+    @Body() dto: { phone: string; otp: string; referredByCode?: string },
     @Req() req: any,
     @Res() res: any,
   ) {
@@ -98,8 +100,9 @@ export class AuthController {
     }
     const ip = req.ip || '';
     const userAgent = req.headers['user-agent'] || '';
+    console.log('=== DEMO LOGIN BODY ===', JSON.stringify(dto));
     try {
-      const result = await this.authService.demoLogin(dto.phone, ip, userAgent);
+      const result = await this.authService.demoLogin(dto.phone, ip, userAgent, dto.referredByCode);
       return res.status(HttpStatus.OK).json(result);
     } catch (error: any) {
       console.error('DEMO LOGIN ERROR:', error);
@@ -114,13 +117,19 @@ export class AuthController {
   changePhone(@Body() dto: ChangePhoneDto, @Req() req: any) {
     return this.authService.changePhone(req.user.id, dto);
   }
-  @Post('check-user')
+ @Post('check-user')
   @ApiOperation({ summary: 'Check if user exists and if profile is complete' })
   @HttpCode(HttpStatus.OK)
   checkUser(@Body() dto: CheckUserDto) {
     return this.authService.checkUser(dto);
   }
 
+  @Get('referral/:code')
+  @ApiOperation({ summary: 'Get referrer name by referral code' })
+  @HttpCode(HttpStatus.OK)
+  getReferrerByCode(@Param('code') code: string) {
+    return this.authService.getReferrerByCode(code);
+  }
   @Post('refresh-token')
   @ApiOperation({ summary: 'Get new access token using refresh token' })
   @HttpCode(HttpStatus.OK)

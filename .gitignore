@@ -10,3 +10,5 @@ yarn-error.log
 .vscode/
 cloudflared.exe
 tunnel.log
+firebaseAdminKey.json
+firebaseAdminKey.json

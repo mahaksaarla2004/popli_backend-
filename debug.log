@@ -29,3 +29,12 @@
 {"timestamp":"2026-06-29T13:30:38.935Z","status":401,"res":{"message":"Invalid refresh token","error":"Unauthorized","statusCode":401}}
 {"timestamp":"2026-06-29T13:30:38.939Z","status":401,"res":{"message":"Invalid refresh token","error":"Unauthorized","statusCode":401}}
 {"timestamp":"2026-06-29T13:30:57.617Z","status":400,"res":{"message":"Email, phone or username is already in use by another account.","error":"Bad Request","statusCode":400}}
+{"timestamp":"2026-06-30T15:31:32.395Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T15:41:49.192Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T15:41:49.196Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T15:41:49.197Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T15:41:49.198Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T15:41:49.202Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T15:41:49.207Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T16:13:05.439Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-06-30T16:13:05.857Z","status":401,"res":{"message":"Invalid refresh token","error":"Unauthorized","statusCode":401}}

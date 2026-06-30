@@ -179,13 +179,14 @@ export class ReelsService {
     return reel;
   }
 
-  async getFeed(
+async getFeed(
     cursor: string | null = null,
     limit: number = 10,
     category?: string,
   ) {
     const where: any = {
       privacy: { in: ['Public', 'Everyone'] }, // Show public reels in the general feed
+      mediaType: 'PHOTO', // Home feed shows only image posts, not video reel covers
       ...(category && category !== 'all' ? { category } : {}),
     };
 
@@ -232,7 +233,7 @@ export class ReelsService {
   ) {
     // We ignore skip (page) for the database query because we are randomizing
     // We fetch a larger pool (e.g., 50) of recent reels that haven't been seen yet
-    const where: any = {
+   const where: any = {
       privacy: { in: ['Public', 'Everyone'] }, // Show public reels in explore
       ...(category && category !== 'all' ? { category } : {}),
     };
@@ -284,10 +285,11 @@ export class ReelsService {
 
     console.log(`[getFollowingFeed] User ${userId} follows:`, followingIds);
 
-    const reels = await this.prisma.reel.findMany({
+   const reels = await this.prisma.reel.findMany({
       where: {
         creatorId: { in: followingIds },
         privacy: { in: ['Public', 'Friends'] }, // Following feed can show friends-only posts
+        mediaType: 'VIDEO', // Following reels feed shows only video reels
       },
       skip,
       take: limit,

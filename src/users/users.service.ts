@@ -223,6 +223,21 @@ export class UsersService {
     return creator;
   }
 
+  async getReferrals(userId: string) {
+    return this.prisma.user.findMany({
+      where: { referredById: userId },
+      orderBy: { createdAt: 'desc' },
+      select: {
+        id: true,
+        name: true,
+        username: true,
+        avatar: true,
+        isVerified: true,
+        createdAt: true,
+      },
+    });
+  }
+
   async getCreators() {
     return this.prisma.user.findMany({
       where: {

@@ -323,7 +323,7 @@ async googleLogin(dto: GoogleLoginDto, ip: string, userAgent: string) {
     };
   }
 
-  async demoLogin(phone: string, ip: string, userAgent: string) {
+ async demoLogin(phone: string, ip: string, userAgent: string, referredByCode?: string) {
     if (!phone) throw new BadRequestException('Phone is required');
 
     let possiblePhones = [phone];
@@ -339,16 +339,96 @@ async googleLogin(dto: GoogleLoginDto, ip: string, userAgent: string) {
     if (!user) {
       const finalUsername =
         'user_' + Math.random().toString(36).substring(2, 10);
+
+      const referralCode =
+        Math.random().toString(36).substring(2, 8).toUpperCase() +
+        Math.floor(Math.random() * 100);
+
+      let referredById: string | null = null;
+      if (referredByCode) {
+        const referrer = await this.prisma.user.findUnique({
+          where: { referralCode: referredByCode },
+        });
+        if (referrer) referredById = referrer.id;
+      }
+
       user = await this.prisma.user.create({
         data: {
           phone,
           username: finalUsername,
           name: 'Demo User',
           isProfileComplete: false,
+          referralCode,
+          referredById,
         },
       });
       await this.prisma.wallet.create({ data: { userId: user.id } });
       await this.prisma.userPreference.create({ data: { userId: user.id } });
+
+      if (referredById) {
+        const tracker = await this.prisma.referralTracker.create({
+          data: {
+            referrerId: referredById,
+            referredId: user.id,
+            status: 'COMPLETED',
+            rewardInr: 100,
+          },
+        });
+
+        const refWallet = await this.prisma.wallet.findUnique({ where: { userId: referredById } });
+        if (refWallet) {
+          await this.prisma.wallet.update({
+            where: { id: refWallet.id },
+            data: { withdrawableBalance: { increment: 100 }, totalEarnings: { increment: 100 } }
+          });
+          await this.prisma.walletLedger.create({
+            data: {
+              userId: referredById,
+              walletId: refWallet.id,
+              source: 'REFERRAL_BONUS',
+              sourceId: tracker.id,
+              credit: 100,
+              balanceAfter: refWallet.withdrawableBalance + 100,
+              description: 'Referral Bonus for a successful signup'
+            }
+          });
+          await this.prisma.notification.create({
+            data: {
+              userId: referredById,
+              type: 'SYSTEM',
+              title: 'Referral Bonus!',
+              body: 'You earned ₹100 because your friend successfully joined Popli!'
+            }
+          });
+        }
+
+        const myWallet = await this.prisma.wallet.findUnique({ where: { userId: user.id } });
+        if (myWallet) {
+          await this.prisma.wallet.update({
+            where: { id: myWallet.id },
+            data: { withdrawableBalance: { increment: 25 }, totalEarnings: { increment: 25 } }
+          });
+          await this.prisma.walletLedger.create({
+            data: {
+              userId: user.id,
+              walletId: myWallet.id,
+              source: 'REFERRAL_BONUS',
+              sourceId: tracker.id,
+              credit: 25,
+              balanceAfter: 25,
+              description: 'Welcome Bonus for using a referral code'
+            }
+          });
+          await this.prisma.notification.create({
+            data: {
+              userId: user.id,
+              type: 'SYSTEM',
+              title: 'Welcome Bonus!',
+              body: 'You earned ₹25 for signing up with a referral code!'
+            }
+          });
+        }
+      }
     }
 
     const payload = { sub: user.id, role: user.role };
@@ -412,6 +492,19 @@ async googleLogin(dto: GoogleLoginDto, ip: string, userAgent: string) {
     });
 
     return { phone: updatedUser.phone };
+  }
+
+ async getReferrerByCode(code: string) {
+    if (!code) return { valid: false };
+
+    const referrer = await this.prisma.user.findUnique({
+      where: { referralCode: code.toUpperCase() },
+      select: { name: true, username: true },
+    });
+
+    if (!referrer) return { valid: false };
+
+    return { valid: true, name: referrer.name, username: referrer.username };
   }
 
   async checkUser(dto: any) {
