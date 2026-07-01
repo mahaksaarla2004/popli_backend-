@@ -363,17 +363,18 @@ model Message {
 }
 
 model Wallet {
-  id                  String              @id @default(uuid())
-  userId              String              @unique
-  coinBalance         Int                 @default(0)
-  inrEarnings         Float               @default(0.0)
-  createdAt           DateTime            @default(now())
-  updatedAt           DateTime            @updatedAt
-  approvedBalance     Float               @default(0.0)
-  pendingBalance      Float               @default(0.0)
-  totalEarnings       Float               @default(0.0)
-  totalWithdrawn      Float               @default(0.0)
-  withdrawableBalance Float               @default(0.0)
+  id                     String              @id @default(uuid())
+  userId                 String              @unique
+  coinBalance            Int                 @default(0)
+  inrEarnings            Float               @default(0.0)
+  createdAt              DateTime            @default(now())
+  updatedAt              DateTime            @updatedAt
+  approvedBalance        Float               @default(0.0)
+  pendingBalance         Float               @default(0.0)
+  totalEarnings          Float               @default(0.0)
+  totalWithdrawn         Float               @default(0.0)
+  withdrawableBalance    Float               @default(0.0)
+  referralLockedBalance  Float               @default(0.0)
   transactions        Transaction[]
   user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
   ledgers             WalletLedger[]
