@@ -105,3 +105,42 @@ export class VerifyFirebaseTokenDto {
   @IsString()
   phone?: string;
 }
+
+export class ChangePhoneDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  oldPhone: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  newPhone: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  oldPhoneOtp: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  newPhoneOtp: string;
+}
+
+export class GoogleLoginDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  idToken: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  deviceId?: string;
+
+  @ApiProperty({ required: false })
+  @IsOptional()
+  @IsString()
+  referredByCode?: string;
+}
