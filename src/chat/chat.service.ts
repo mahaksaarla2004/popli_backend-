@@ -112,6 +112,10 @@ export class ChatService {
       },
     });
 
+    const participants = await this.prisma.chatParticipant.findMany({
+      where: { chatId },
+    });
+
     await this.prisma.chatParticipant.updateMany({
       where: { chatId, userId: { not: senderId } },
       data: { unreadCount: { increment: 1 } },
@@ -119,6 +123,10 @@ export class ChatService {
 
     if (this.chatGateway) {
       this.chatGateway.broadcastMessage(chatId, message);
+      // Also broadcast to each participant's personal room
+      participants.forEach((p) => {
+        this.chatGateway.server.to(`user_${p.userId}`).emit('new_message', message);
+      });
     }
 
     return message;

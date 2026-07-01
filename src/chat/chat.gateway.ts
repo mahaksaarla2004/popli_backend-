@@ -27,8 +27,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         secret: process.env.JWT_SECRET,
       });
       client.data.user = decoded;
+      client.join(`user_${decoded.sub}`);
       console.log(
-        `Client connected and authenticated: ${client.id}, User: ${decoded.sub}`,
+        `Client connected and authenticated: ${client.id}, User: ${decoded.sub}, joined user_${decoded.sub}`,
       );
     } catch (error) {
       console.log(`Client connection failed: ${client.id}`, error.message);
