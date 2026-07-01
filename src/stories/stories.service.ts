@@ -268,7 +268,7 @@ export class StoriesService {
       },
       include: {
         creator: { select: { id: true, username: true, avatar: true } },
-        viewers: { where: { userId }, select: { id: true } }, // checking if current user viewed
+        viewers: { where: { userId }, select: { id: true, userId: true, user: { select: { username: true } } } },
         _count: { select: { viewers: true } }, // get total viewers count
       },
       orderBy: { createdAt: 'desc' },
@@ -280,7 +280,7 @@ export class StoriesService {
       where: { id: storyId },
       include: {
         creator: { select: { id: true, username: true, avatar: true } },
-        viewers: { where: { userId }, select: { id: true } },
+       viewers: { where: { userId }, select: { id: true, userId: true, user: { select: { username: true } } } },
         _count: { select: { viewers: true } },
       },
     });
