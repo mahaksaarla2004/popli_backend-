@@ -343,7 +343,7 @@ export class ChallengesService {
     return { data, meta: { total, page, limit } };
   }
 
-  async approveReel(reelId: string, status: 'APPROVED' | 'REJECTED') {
+async approveReel(reelId: string, status: 'APPROVED' | 'REJECTED', reason?: string) {
     const reel = await this.prisma.reel.update({
       where: { id: reelId },
       data: { challengeApprovalStatus: status },
@@ -351,20 +351,22 @@ export class ChallengesService {
     });
 
     if (reel.challenge) {
+      const body = status === 'APPROVED'
+        ? `Your entry for the ${reel.challenge.title} challenge has been approved.`
+        : `Your entry for the ${reel.challenge.title} challenge was rejected. Reason: ${reason || 'Does not meet challenge guidelines'}. Please upload a new entry.`;
+
       await this.prisma.notification.create({
         data: {
           userId: reel.creatorId,
-          type:
-            status === 'APPROVED' ? 'CHALLENGE_APPROVED' : 'CHALLENGE_REJECTED',
+          type: status === 'APPROVED' ? 'CHALLENGE_APPROVED' : 'CHALLENGE_REJECTED',
           title: `Challenge Entry ${status === 'APPROVED' ? 'Approved' : 'Rejected'}`,
-          body: `Your entry for the ${reel.challenge.title} challenge has been ${status.toLowerCase()}.`,
+          body,
         },
       });
     }
 
     return reel;
   }
-
   async freezeLeaderboardAndSelectWinners(
     challengeId: string,
     winnerUserIds: string[],

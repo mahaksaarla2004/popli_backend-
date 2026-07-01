@@ -51,6 +51,15 @@ export class ChallengesController {
     return this.challengesService.createChallenge(data);
   }
 
+@Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles(Role.ADMIN)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Delete a challenge (Admin only)' })
+  deleteChallenge(@Param('id') id: string) {
+    return this.challengesService.deleteChallenge(id);
+  }
+
   @Put(':id')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(Role.ADMIN)
@@ -58,15 +67,6 @@ export class ChallengesController {
   @ApiOperation({ summary: 'Update a challenge (Admin only)' })
   updateChallenge(@Param('id') id: string, @Body() data: any) {
     return this.challengesService.updateChallenge(id, data);
-  }
-
-  @Delete(':id')
-  @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles(Role.ADMIN)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Delete a challenge (Admin only)' })
-  deleteChallenge(@Param('id') id: string) {
-    return this.challengesService.deleteChallenge(id);
   }
 
   @Get('admin/:id/participants')
@@ -110,11 +110,12 @@ export class ChallengesController {
   @Roles(Role.ADMIN)
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Approve or Reject a reel' })
-  approveReel(
+approveReel(
     @Param('reelId') reelId: string,
     @Body('status') status: 'APPROVED' | 'REJECTED',
+    @Body('reason') reason?: string,
   ) {
-    return this.challengesService.approveReel(reelId, status);
+    return this.challengesService.approveReel(reelId, status, reason);
   }
 
   @Post('admin/:id/winners')

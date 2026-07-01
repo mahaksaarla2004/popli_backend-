@@ -88,7 +88,7 @@ export class ReelsService {
         ...restDto,
         layersData,
         creatorId,
-        ...(challengeId && { challengeId }),
+       ...(challengeId && { challengeId, challengeApprovalStatus: 'PENDING' }),
         ...(validTaggedUserIds.length > 0 && {
           taggedUsers: {
             connect: validTaggedUserIds.map((id) => ({ id })),

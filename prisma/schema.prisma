@@ -156,16 +156,16 @@ model Reel {
   privacy                 String             @default("Public")
   isMonetized             Boolean            @default(true)
   challengeId             String?
-  challengeApprovalStatus ReelApprovalStatus @default(APPROVED)
+   challengeApprovalStatus ReelApprovalStatus @default(PENDING)
   allowComments           Boolean            @default(true)
   allowDuet               Boolean            @default(true)
   allowGifting            Boolean            @default(true)
   comments                Comment[]
   likes                   Like[]
+  location                PostLocation?
   challenge               Challenge?         @relation("ChallengeReels", fields: [challengeId], references: [id])
   creator                 User               @relation("CreatorReels", fields: [creatorId], references: [id], onDelete: Cascade)
   hashtags                ReelHashtag[]
-  location                PostLocation?
   reports                 Report[]           @relation("ReportedReel")
   saves                   Save[]
   shares                  Share[]
@@ -175,14 +175,14 @@ model Reel {
 }
 
 model PostLocation {
-  id          String   @id @default(uuid())
-  reelId      String   @unique
-  name        String
-  latitude    Float?
-  longitude   Float?
-  placeId     String?
-  createdAt   DateTime @default(now())
-  reel        Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
+  id        String   @id @default(uuid())
+  reelId    String   @unique
+  name      String
+  latitude  Float?
+  longitude Float?
+  placeId   String?
+  createdAt DateTime @default(now())
+  reel      Reel     @relation(fields: [reelId], references: [id], onDelete: Cascade)
 }
 
 model Comment {
@@ -363,22 +363,22 @@ model Message {
 }
 
 model Wallet {
-  id                     String              @id @default(uuid())
-  userId                 String              @unique
-  coinBalance            Int                 @default(0)
-  inrEarnings            Float               @default(0.0)
-  createdAt              DateTime            @default(now())
-  updatedAt              DateTime            @updatedAt
-  approvedBalance        Float               @default(0.0)
-  pendingBalance         Float               @default(0.0)
-  totalEarnings          Float               @default(0.0)
-  totalWithdrawn         Float               @default(0.0)
-  withdrawableBalance    Float               @default(0.0)
-  referralLockedBalance  Float               @default(0.0)
-  transactions        Transaction[]
-  user                User                @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ledgers             WalletLedger[]
-  withdrawalRequests  WithdrawalRequest[]
+  id                    String              @id @default(uuid())
+  userId                String              @unique
+  coinBalance           Int                 @default(0)
+  inrEarnings           Float               @default(0.0)
+  createdAt             DateTime            @default(now())
+  updatedAt             DateTime            @updatedAt
+  approvedBalance       Float               @default(0.0)
+  pendingBalance        Float               @default(0.0)
+  totalEarnings         Float               @default(0.0)
+  totalWithdrawn        Float               @default(0.0)
+  withdrawableBalance   Float               @default(0.0)
+  referralLockedBalance Float               @default(0.0)
+  transactions          Transaction[]
+  user                  User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  ledgers               WalletLedger[]
+  withdrawalRequests    WithdrawalRequest[]
 }
 
 model Transaction {
