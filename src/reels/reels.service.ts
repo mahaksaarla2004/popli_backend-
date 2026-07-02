@@ -278,11 +278,10 @@ async getFeed(
 
     console.log(`[getFollowingFeed] User ${userId} follows:`, followingIds);
 
-   const reels = await this.prisma.reel.findMany({
+ const reels = await this.prisma.reel.findMany({
       where: {
         creatorId: { in: followingIds },
-        privacy: { in: ['Public', 'Friends'] }, // Following feed can show friends-only posts
-        mediaType: 'VIDEO', // Following reels feed shows only video reels
+        privacy: { in: ['Public', 'Friends'] },
       },
       skip,
       take: limit,

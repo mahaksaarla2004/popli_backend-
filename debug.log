@@ -137,3 +137,19 @@
 {"timestamp":"2026-07-01T15:29:21.880Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
 {"timestamp":"2026-07-01T15:29:22.177Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
 {"timestamp":"2026-07-01T15:29:23.463Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-07-02T05:20:54.189Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-07-02T07:06:11.215Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-07-02T07:06:11.231Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-07-02T10:22:02.650Z","status":404,"res":{"message":"Reel not found","error":"Not Found","statusCode":404}}
+{"timestamp":"2026-07-02T10:22:33.910Z","status":404,"res":{"message":"Reel not found","error":"Not Found","statusCode":404}}
+{"timestamp":"2026-07-02T10:23:01.765Z","status":404,"res":{"message":"Reel not found","error":"Not Found","statusCode":404}}
+{"timestamp":"2026-07-02T10:23:56.609Z","status":404,"res":{"message":"Reel not found","error":"Not Found","statusCode":404}}
+{"timestamp":"2026-07-02T11:06:47.652Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-07-02T11:07:14.492Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-07-02T11:07:14.495Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-07-02T11:07:14.798Z","status":401,"res":{"message":"Invalid refresh token","error":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-07-02T11:07:14.801Z","status":401,"res":{"message":"Invalid refresh token","error":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-07-02T11:25:43.271Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-07-02T11:25:43.276Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-07-02T11:25:43.643Z","status":401,"res":{"message":"Invalid refresh token","error":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-07-02T11:25:43.645Z","status":401,"res":{"message":"Invalid refresh token","error":"Unauthorized","statusCode":401}}
