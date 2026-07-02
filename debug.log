@@ -153,3 +153,4 @@
 {"timestamp":"2026-07-02T11:25:43.276Z","status":401,"res":{"message":"Unauthorized","statusCode":401}}
 {"timestamp":"2026-07-02T11:25:43.643Z","status":401,"res":{"message":"Invalid refresh token","error":"Unauthorized","statusCode":401}}
 {"timestamp":"2026-07-02T11:25:43.645Z","status":401,"res":{"message":"Invalid refresh token","error":"Unauthorized","statusCode":401}}
+{"timestamp":"2026-07-02T13:12:43.701Z","status":404,"res":{"message":"Gift not found","error":"Not Found","statusCode":404}}
