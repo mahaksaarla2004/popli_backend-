@@ -24,6 +24,13 @@ export class GiftsService {
       const gift = await tx.gift.findUnique({ where: { id: dto.giftId } });
       if (!gift) throw new NotFoundException('Gift not found');
 
+      if (dto.reelId) {
+        const reel = await tx.reel.findUnique({ where: { id: dto.reelId } });
+        if (reel && reel.mediaType === 'PHOTO') {
+          throw new BadRequestException('Gifts can only be sent on video reels, not photo posts.');
+        }
+      }
+
       const senderWallet = await tx.wallet.findUnique({
         where: { userId: senderId },
       });

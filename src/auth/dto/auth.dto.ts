@@ -108,19 +108,14 @@ export class VerifyFirebaseTokenDto {
 
 export class ChangePhoneDto {
   @ApiProperty()
+  @IsOptional()
   @IsString()
-  @IsNotEmpty()
-  oldPhone: string;
+  currentPhoneOtp?: string;
 
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
   newPhone: string;
-
-  @ApiProperty()
-  @IsString()
-  @IsNotEmpty()
-  oldPhoneOtp: string;
 
   @ApiProperty()
   @IsString()

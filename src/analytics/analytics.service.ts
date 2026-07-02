@@ -11,6 +11,7 @@ export class AnalyticsService {
       include: {
         wallet: true,
         reels: {
+          where: { mediaType: 'VIDEO' },
           select: {
             id: true,
             viewsCount: true,

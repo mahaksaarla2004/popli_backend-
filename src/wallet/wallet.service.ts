@@ -41,7 +41,7 @@ export class WalletService {
     // 1. Find all unprocessed ValidViews
     const unprocessedViews = await this.prisma.validView.findMany({
       where: { isProcessed: false },
-      include: { reel: { select: { creatorId: true, isMonetized: true } } },
+      include: { reel: { select: { creatorId: true, isMonetized: true, mediaType: true } } },
     });
 
     if (unprocessedViews.length === 0) {
@@ -61,7 +61,7 @@ export class WalletService {
 // 3. Group views by Creator AND Reel
     const reelViewsMap = new Map<string, { creatorId: string; viewCount: number }>();
     for (const view of unprocessedViews) {
-      if (view.reel.isMonetized) {
+      if (view.reel.isMonetized && view.reel.mediaType === 'VIDEO') {
         const key = view.reelId;
         const existing = reelViewsMap.get(key);
         if (existing) {
