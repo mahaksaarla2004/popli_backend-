@@ -460,7 +460,7 @@ async googleLogin(dto: GoogleLoginDto, ip: string, userAgent: string) {
     };
   }
 
- async changePhone(userId: string, dto: { currentPhoneOtp: string; newPhone: string; newPhoneOtp: string }) {
+ async changePhone(userId: string, dto: { currentPhoneOtp?: string; newPhone: string; newPhoneOtp: string }) {
     if (dto.currentPhoneOtp !== '1234' || dto.newPhoneOtp !== '1234') {
       throw new BadRequestException('Invalid OTP');
     }
